@@ -9,6 +9,9 @@ dist/
 # (fetched by renderExtensionTemplateAsync at runtime).
 /panel.html
 /settings.html
+/editor.html
+/map-library.html
+/location-properties.html
 
 # Private planning/source-of-truth documents (kept locally, not committed)
 PLAN/

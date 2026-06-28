@@ -151,10 +151,11 @@ async function mountViewer(): Promise<void> {
   }
   try {
     const service = viewerService;
-    const document = await service.ensureLoaded();
+    const resolved = await service.ensureLoaded();
     viewerController = new ViewerController({
       container: canvas,
-      document,
+      document: resolved.document,
+      imageUrlOverride: resolved.imageUrl,
       eventBus: service.getEventBus(),
       bindToolbar: (commands: ViewerToolbar) => bindToolbar(commands),
       showDetail: (element) => service.showLocationDetail(element),

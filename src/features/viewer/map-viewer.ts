@@ -29,18 +29,22 @@ type ResolvableMimeType = Extract<
 >;
 
 /**
- * Resolves the background image URL for a document. Bundled documents
- * carry a `url`; stored documents (Milestone 2+) will resolve `assetId`
- * via the asset store. For now only `url` is supported.
+ * Resolves the background image URL for a document. If an explicit
+ * `imageUrl` override was passed (a repository-resolved object URL for
+ * a persistent map), use that. Otherwise fall back to a bundled
+ * document's `url`. Persistent maps without a resolved URL are an
+ * error the caller must surface.
  */
-function resolveImageUrl(document: AtlasMapDocument): string {
+function resolveImageUrl(document: AtlasMapDocument, override?: string): string {
+  if (override) {
+    return override;
+  }
   const { image } = document;
   if (image.url) {
     return image.url;
   }
-  // assetId-backed resolution arrives with storage in Milestone 2.
   throw new Error(
-    `Map "${document.id}" has no resolvable image URL; asset-store-backed images are not supported until Milestone 2.`,
+    `Map "${document.id}" has no resolvable image. The referenced asset could not be loaded.`,
   );
 }
 
@@ -69,12 +73,14 @@ export class MapViewer {
   private readonly document: AtlasMapDocument;
   private readonly width: number;
   private readonly height: number;
+  private readonly imageUrlOverride?: string;
 
-  constructor(container: HTMLElement, document: AtlasMapDocument) {
+  constructor(container: HTMLElement, document: AtlasMapDocument, imageUrlOverride?: string) {
     this.container = container;
     this.document = document;
     this.width = document.image.width;
     this.height = document.image.height;
+    this.imageUrlOverride = imageUrlOverride;
   }
 
   /**
@@ -107,7 +113,7 @@ export class MapViewer {
 
     let imageUrl: string;
     try {
-      imageUrl = resolveImageUrl(this.document);
+      imageUrl = resolveImageUrl(this.document, this.imageUrlOverride);
     } catch (error) {
       logError('Failed to resolve map background image.', error);
       this.map = map;

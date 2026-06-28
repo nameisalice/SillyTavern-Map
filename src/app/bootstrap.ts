@@ -23,6 +23,9 @@ import { tryGetContext } from '@/st/context';
 import { loadSettings, saveMapIndex } from '@/st/settings-bridge';
 import { mountSettingsDrawer } from '@/ui/settings-controller';
 import { openAtlasPanel, setViewerService } from '@/ui/panel-controller';
+import { openMapLibrary } from '@/ui/map-library-controller';
+import { openEditor } from '@/ui/editor-dialog-controller';
+import { openCreateMapDialog, setCreateMapUploadService } from '@/ui/create-map-controller';
 import { logError, logInfo } from '@/core/logger';
 import { EventBus } from '@/core/events';
 import { Container, type DependencyToken, token } from '@/core/container';
@@ -34,7 +37,14 @@ import {
   ThumbnailRepository,
   ViewerStateRepository,
 } from '@/repositories';
-import { ExportService, ImportService, MapLibraryService } from '@/services';
+import {
+  ExportService,
+  ImageUploadService,
+  ImportService,
+  MapDraftService,
+  MapLibraryService,
+  ThumbnailService,
+} from '@/services';
 
 /**
  * Dependency tokens for the core singletons. Declared here so any
@@ -58,6 +68,12 @@ export const ExportServiceToken: DependencyToken<ExportService> =
   token<ExportService>('ExportService');
 export const MapLibraryServiceToken: DependencyToken<MapLibraryService> =
   token<MapLibraryService>('MapLibraryService');
+export const MapDraftServiceToken: DependencyToken<MapDraftService> =
+  token<MapDraftService>('MapDraftService');
+export const ImageUploadServiceToken: DependencyToken<ImageUploadService> =
+  token<ImageUploadService>('ImageUploadService');
+export const ThumbnailServiceToken: DependencyToken<ThumbnailService> =
+  token<ThumbnailService>('ThumbnailService');
 export const ViewerServiceToken: DependencyToken<ViewerService> =
   token<ViewerService>('ViewerService');
 
@@ -102,7 +118,26 @@ export function getContainer(): Container {
     () => new MapLibraryService(mapRepository, viewerStateRepository),
     'singleton',
   );
-  container.register(ViewerServiceToken, () => new AtlasViewerService(eventBus), 'singleton');
+  container.register(
+    MapDraftServiceToken,
+    () => new MapDraftService(mapRepository, assetRepository),
+    'singleton',
+  );
+  container.register(
+    ImageUploadServiceToken,
+    () => new ImageUploadService(assetRepository),
+    'singleton',
+  );
+  container.register(
+    ThumbnailServiceToken,
+    () => new ThumbnailService(assetRepository, thumbnailRepository),
+    'singleton',
+  );
+  container.register(
+    ViewerServiceToken,
+    () => new AtlasViewerService(eventBus, mapRepository, assetRepository),
+    'singleton',
+  );
   return container;
 }
 
@@ -131,9 +166,11 @@ export async function bootstrap(): Promise<boolean> {
   // Inject the viewer service into the panel via the container so the
   // panel never constructs services itself.
   setViewerService(getContainer().resolve(ViewerServiceToken));
+  setCreateMapUploadService(getContainer().resolve(ImageUploadServiceToken));
 
   await safeMountSettings();
   mountMenuButton();
+  mountLibraryButton();
 
   logInfo('Atlas bootstrap complete.');
   return true;
@@ -158,6 +195,119 @@ function mountMenuButton(): void {
     menu.append(createMenuButton());
   } catch (error) {
     logError('Atlas menu button failed to mount.', error);
+  }
+}
+
+function mountLibraryButton(): void {
+  try {
+    const menu = document.querySelector(EXTENSIONS_MENU_SELECTOR);
+    if (!menu) {
+      return;
+    }
+    const button = document.createElement('div');
+    button.className = 'st-atlas__menu-button list-group-item flex-container flexGap5';
+    button.setAttribute('data-st-atlas', 'library-button');
+    button.innerHTML =
+      '<div class="fa-solid fa-map-location-dot" title="Open the Atlas map library"></div>Atlas Library';
+    button.addEventListener('click', () => void openLibraryFlow());
+    menu.append(button);
+  } catch (error) {
+    logError('Atlas library button failed to mount.', error);
+  }
+}
+
+/** Opens the map library, wiring open/edit/create actions to services. */
+async function openLibraryFlow(): Promise<void> {
+  const c = getContainer();
+  const libraryService = c.resolve(MapLibraryServiceToken);
+  const viewerService = c.resolve(ViewerServiceToken);
+  const draftService = c.resolve(MapDraftServiceToken);
+  const eventBus = c.resolve(EventBusToken);
+  try {
+    await openMapLibrary(
+      libraryService,
+      {
+        openInViewer: (mapId) => void openMapInViewMode(mapId, viewerService, eventBus),
+        openInEditor: (mapId) =>
+          void openMapInEditorMode(mapId, viewerService, draftService, eventBus),
+        createMap: () => void openCreateMapFlow(draftService, viewerService, eventBus),
+      },
+      async (content, type) => {
+        const ctx = tryGetContext();
+        if (!ctx) {
+          return 0;
+        }
+        const popupType = type === 'confirm' ? ctx.POPUP_TYPE.CONFIRM : ctx.POPUP_TYPE.TEXT;
+        return (await ctx.callGenericPopup(content, popupType)) as number;
+      },
+    );
+  } catch (error) {
+    logError('Atlas library flow failed.', error);
+  }
+}
+
+/** Opens a saved map in the viewer panel. */
+async function openMapInViewMode(
+  mapId: string,
+  viewerService: ViewerService,
+  eventBus: EventBus,
+): Promise<void> {
+  try {
+    await viewerService.loadMap(mapId);
+    openAtlasPanel();
+    eventBus.emit('MapOpened', { mapId });
+  } catch (error) {
+    logError('Failed to open map in viewer.', error);
+  }
+}
+
+/** Opens a saved map in the editor dialog. */
+async function openMapInEditorMode(
+  mapId: string,
+  viewerService: ViewerService,
+  draftService: MapDraftService,
+  eventBus: EventBus,
+): Promise<void> {
+  try {
+    const resolved = await viewerService.loadMap(mapId);
+    await openEditor({
+      document: resolved.document,
+      imageUrlOverride: resolved.imageUrl,
+      draftService,
+      viewerService,
+      eventBus,
+      onSaved: (saved) => {
+        eventBus.emit('MapSaved', { mapId: saved.id });
+      },
+    });
+  } catch (error) {
+    logError('Failed to open map in editor.', error);
+  }
+}
+
+/** Opens the Create Map workflow. */
+async function openCreateMapFlow(
+  draftService: MapDraftService,
+  viewerService: ViewerService,
+  eventBus: EventBus,
+): Promise<void> {
+  try {
+    const result = await openCreateMapDialog(draftService);
+    if (!result) {
+      return;
+    }
+    await openEditor({
+      document: result.document,
+      imageUrlOverride: result.imageUrl,
+      draftService,
+      viewerService,
+      eventBus,
+      onSaved: (saved) => {
+        eventBus.emit('MapSaved', { mapId: saved.id });
+      },
+    });
+  } catch (error) {
+    logError('Create map flow failed.', error);
   }
 }
 

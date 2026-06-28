@@ -18,16 +18,27 @@ export interface ViewerToolbar {
   readonly onZoomOut: () => void;
 }
 
+/** A resolved image for a map document. */
+export interface ResolvedMapImage {
+  readonly document: AtlasMapDocument;
+  /** Object URL for the background image, or undefined for bundled maps. */
+  readonly imageUrl?: string;
+}
+
 /** Map viewer coordination contract. */
 export interface ViewerService {
   /** Returns the active map document for the current chat, if any. */
   getActiveMap(): AtlasMapDocument | null;
 
-  /** Loads a map document by id, making it active. */
-  loadMap(mapId: string): Promise<AtlasMapDocument>;
+  /**
+   * Loads a map document by id, making it active. Resolves the
+   * background image asset to an object URL for persistent maps.
+   * Bundled maps return their inline `url`.
+   */
+  loadMap(mapId: string): Promise<ResolvedMapImage>;
 
   /** Ensures the bundled map is loaded and returns it. */
-  ensureLoaded(): Promise<AtlasMapDocument>;
+  ensureLoaded(): Promise<ResolvedMapImage>;
 
   /** Looks up a location by id within the active map. */
   findLocationById(locationId: string): AtlasLocation | null;
@@ -42,6 +53,6 @@ export interface ViewerService {
    */
   showLocationDetail(element: HTMLElement): Promise<void>;
 
-  /** Releases the active document reference. */
+  /** Releases the active document reference and revokes any object URL. */
   dispose(): void;
 }

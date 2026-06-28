@@ -65,12 +65,15 @@ export function buildMarkerData(
 }
 
 /**
- * The marker layer. Created once per viewer session and disposed with it.
+ * The marker layer. Created once per viewer/editor session and disposed
+ * with it. In edit mode the editor enables marker dragging via
+ * `setDraggable`.
  */
 export class MarkerLayer {
   private readonly markers = new Map<string, L.Marker>();
   private readonly group: L.LayerGroup;
   private readonly map: L.Map;
+  private dragHandler: ((id: string, lat: number, lng: number) => void) | null = null;
 
   constructor(
     map: L.Map,
@@ -86,23 +89,53 @@ export class MarkerLayer {
 
   /**
    * Renders the given marker data, replacing any previous markers.
-   * The current location uses a distinct icon class.
+   * The current location uses a distinct icon class. Drag is enabled on
+   * every marker iff a drag handler is currently set.
    */
   render(markers: readonly MarkerData[]): void {
     this.clear();
+    const draggable = this.dragHandler !== null;
     for (const data of markers) {
       const icon = this.createIcon(data.current, data.hidden);
       const marker = L.marker([data.lat, data.lng], {
         icon,
         title: data.name,
         alt: data.name,
+        draggable,
       });
       marker.on('click', () => {
         this.select(data.locationId);
         this.onSelect(data.locationId);
       });
+      if (this.dragHandler) {
+        marker.on('dragend', () => {
+          const { lat, lng } = marker.getLatLng();
+          this.dragHandler?.(data.locationId, lat, lng);
+        });
+      }
       marker.addTo(this.group);
       this.markers.set(data.locationId, marker);
+    }
+  }
+
+  /**
+   * Enables or disables marker dragging. When enabled, the handler is
+   * called once per completed drag with the marker id and new lat/lng.
+   * Re-renders existing markers so their drag state updates.
+   */
+  setDraggable(enabled: boolean, handler?: (id: string, lat: number, lng: number) => void): void {
+    this.dragHandler = enabled && handler ? handler : null;
+    // Re-render to apply the draggable flag to existing markers.
+    for (const [id, marker] of this.markers) {
+      marker.dragging?.disable();
+      if (this.dragHandler) {
+        marker.dragging?.enable();
+        marker.off('dragend');
+        marker.on('dragend', () => {
+          const { lat, lng } = marker.getLatLng();
+          this.dragHandler?.(id, lat, lng);
+        });
+      }
     }
   }
 

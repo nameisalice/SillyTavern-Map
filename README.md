@@ -7,11 +7,13 @@ image, place locations by clicking, track the player's current location per chat
 nested maps (world → city → building → room), and inject concise spatial context into
 the model's generations.
 
-> **Status:** Foundation + architecture + map viewer MVP (M0 / M0.5 / M1). The build,
-> tests, linting, and bootstrap are working, the layered architecture is in place, and
-> an interactive image-map viewer with pan, zoom, and markers is bundled with one
-> example map. Storage, the marker editor, per-chat location, prompt injection, and
-> AI generation arrive in later milestones.
+> **Status:** Foundation + architecture + map viewer MVP + persistence + marker editor
+> (M0 / M0.5 / M1 / M2 / M3). The build, tests, linting, and bootstrap are working; the
+> layered architecture is in place; an interactive image-map viewer with pan, zoom, and
+> markers is bundled with one example map; maps persist to browser-local storage; and a
+> visual marker editor with Create Map, click-to-add, drag, undo/redo, preview, and
+> save-through-repository is available from the Atlas Library. Per-chat location, prompt
+> injection, and AI generation arrive in later milestones.
 
 This project is a rework of the original proof-of-concept
 [`Elthial/SillyTavern-Map`](https://github.com/Elthial/SillyTavern-Map), which remains
@@ -192,7 +194,8 @@ src/
 │  └─ viewer-service.ts  ViewerService
 ├─ features/             Self-contained feature modules
 │  ├─ viewer/            Map viewer (Leaflet adapter, marker layer, tooltip, controller)
-│  ├─ editor/            Visual editor UI (lazy-loaded, placeholder)
+│  ├─ editor/            Visual marker editor (session, history, marker ops, property
+│  │                     panel, controller, coordinate utils, unsaved-changes)
 │  ├─ travel/            Travel UI + current-location badge (placeholder)
 │  ├─ generation/        AI generation wizard (optional, placeholder)
 │  ├─ library/           Map library screen (placeholder)
@@ -206,10 +209,14 @@ src/
 │  └─ export/            Export UI
 ├─ ui/                   Currently-mounted UI controllers
 │  ├─ settings-controller.ts  Settings drawer (template-rendered)
-│  └─ panel-controller.ts     Placeholder panel
-├─ templates/            Host-rendered HTML templates (settings, panel); copied to the
-│                        extension root by the build so renderExtensionTemplateAsync
-│                        can fetch them at runtime
+│  ├─ panel-controller.ts     Atlas panel hosting the viewer
+│  ├─ map-library-controller.ts  Library list/open/edit/create/delete
+│  ├─ editor-dialog-controller.ts  Hosts the editor popup + unsaved guard
+│  └─ create-map-controller.ts    Create Map workflow form
+├─ templates/            Host-rendered HTML templates (settings, panel, editor,
+│                        map-library, location-properties); copied to the extension
+│                        root by the build so renderExtensionTemplateAsync can fetch
+│                        them at runtime
 ├─ styles/               Namespaced CSS (.st-atlas / [data-st-atlas])
 └─ assets/               Future binary assets
    ├─ icons/             Custom UI icons

@@ -42,6 +42,7 @@ export class ViewerController {
   private readonly eventBus: EventBus;
   private readonly bindToolbar: ToolbarBinder;
   private readonly showDetail: ShowLocationDetail;
+  private readonly imageUrlOverride?: string;
   private currentLocationId: string | null;
 
   constructor(args: {
@@ -50,6 +51,8 @@ export class ViewerController {
     eventBus: EventBus;
     bindToolbar: ToolbarBinder;
     showDetail: ShowLocationDetail;
+    /** Repository-resolved object URL for a persistent map's image. */
+    imageUrlOverride?: string;
     currentLocationId?: string | null;
   }) {
     this.container = args.container;
@@ -57,6 +60,7 @@ export class ViewerController {
     this.eventBus = args.eventBus;
     this.bindToolbar = args.bindToolbar;
     this.showDetail = args.showDetail;
+    this.imageUrlOverride = args.imageUrlOverride;
     this.currentLocationId = args.currentLocationId ?? args.document.defaultLocationId ?? null;
   }
 
@@ -67,7 +71,7 @@ export class ViewerController {
       return;
     }
     try {
-      this.viewer = new MapViewer(this.container, this.document);
+      this.viewer = new MapViewer(this.container, this.document, this.imageUrlOverride);
       this.viewer.init();
     } catch (error) {
       logError('Failed to initialize map viewer.', error);

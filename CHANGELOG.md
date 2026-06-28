@@ -144,3 +144,68 @@ Providers → Storage`, with a shared `core/` layer.
 
 - No editor, upload UI, drawing tools, AI, prompt injection, slash commands, travel, or
   chat integration were added.
+
+## [0.4.0] — Unreleased — Milestone 3 (Visual Marker Editor and Map Creation)
+
+### Added
+
+- Create Map workflow: collects name, map type, optional description, and a
+  background image; builds a draft only after minimum fields are valid.
+- Image upload service: validates MIME (PNG/JPEG/WebP), enforces a 20 MB
+  limit, decodes to record intrinsic dimensions, stores via AssetRepository
+  by assetId, revokes temporary object URLs. SVG upload is disabled for
+  user-provided files (unsafe inline-rendering risk); the bundled SVG example
+  remains.
+- Visual marker editor: click-to-add (converts Leaflet coords to normalized
+  [0,100]), marker selection, property editing (name, description, category,
+  icon, danger level 0-5, aliases, hidden/discovered flags, World Info
+  keywords, set-as-default), marker dragging (one history entry per drag,
+  clamped coords), and marker deletion (clears selection + defaultLocationId,
+  undoable).
+- Editor state model separate from AtlasMapDocument: selection, mode
+  (edit/preview), dirty, canUndo/canRedo. The editor works on a deep clone;
+  repository-owned documents are never mutated.
+- Bounded undo/redo history (max 100 entries, snapshot-based, binary assets
+  referenced by id only). Redo clears after a new command.
+- Preview mode: hides editor handles, disables drag and click-to-add,
+  preserves camera, opens marker details, writes nothing to persistence.
+- Validation before save: reuses the M2 pipeline plus editor-specific
+  constraints; invalid maps cannot be saved; warnings for empty maps etc.
+- Unsaved-change protection: Save / Discard / Cancel guard on editor exit,
+  map switch, and viewer open; a single beforeunload listener removed on
+  dispose.
+- Minimal map library UI: list, open in viewer, open in editor, create,
+  delete with confirmation. Exercises the repository layer through real UI.
+- Viewer repository integration: ViewerService resolves assetId to a
+  temporary object URL via AssetRepository, revokes on map change/dispose;
+  bundled example remains as fallback/seed; missing assets surface a clear
+  error rather than a silent wrong image.
+- Thumbnail service: canvas-based, max 320px long edge, WebP preferred with
+  PNG fallback, generated once and reused via ThumbnailRepository; failures
+  are non-fatal.
+- Editor events on the EventBus: EditorOpened, EditorClosed, MapDraftChanged,
+  MapSaved, MapDeleted, EditorLocationSelected, EditorModeChanged.
+- Focused editor modules (no God class): EditorSession, EditorHistory,
+  MarkerEditor, PropertyPanel, EditorController, MapDraftService,
+  ThumbnailService, ImageUploadService.
+- 23 new editor/thumbnail tests; 64 total tests passing.
+
+### Changed
+
+- `MarkerLayer` gained optional drag support (`setDraggable`) shared by the
+  viewer and editor.
+- `MapViewer` accepts an optional `imageUrlOverride` for repository-resolved
+  object URLs; `ViewerController` passes it through.
+- `ViewerService.loadMap` now returns a `ResolvedMapImage` (document + URL)
+  and is backed by MapRepository + AssetRepository.
+- Slug/id helpers (`nameToSlug`, `uniqueLocationId`, `uniqueMapId`) moved to
+  the domain layer so services do not import features.
+- Bootstrap registers MapDraftService, ImageUploadService, ThumbnailService,
+  injects them into the panel and Create Map workflow, and adds an "Atlas
+  Library" menu button.
+
+### Notes
+
+- No region/polygon editing, route editing, nested maps, travel, per-chat
+  persistence, fog of war, AI, prompt injection, slash commands, or function
+  tools were added.

@@ -28,6 +28,11 @@ export class ThumbnailRepository {
     return asset?.data ?? null;
   }
 
+  /** Returns true if a thumbnail asset exists for the id. */
+  async thumbnailExists(id: string): Promise<boolean> {
+    return this.assets.exists(id);
+  }
+
   async deleteThumbnail(id: string): Promise<void> {
     await this.assets.deleteAsset(id);
   }

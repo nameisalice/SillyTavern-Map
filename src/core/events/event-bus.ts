@@ -41,6 +41,20 @@ export interface AtlasEventMap {
   GenerationStarted: { readonly presetId: string };
   /** Fired when AI-assisted map generation completes. */
   GenerationFinished: { readonly mapId: string };
+  /** Fired when the editor opens a map draft. */
+  EditorOpened: { readonly mapId: string };
+  /** Fired when the editor closes. */
+  EditorClosed: Record<string, never>;
+  /** Fired when the editor working document changes. */
+  MapDraftChanged: { readonly mapId: string; readonly isDirty: boolean };
+  /** Fired after a draft is saved to the repository. */
+  MapSaved: { readonly mapId: string };
+  /** Fired when a map is deleted from the library. */
+  MapDeleted: { readonly mapId: string };
+  /** Fired when a location is selected in the editor. */
+  EditorLocationSelected: { readonly mapId: string; readonly locationId: string };
+  /** Fired when the editor mode (edit/preview) changes. */
+  EditorModeChanged: { readonly mapId: string; readonly mode: 'edit' | 'preview' };
 }
 
 /** Any event name in the map. */

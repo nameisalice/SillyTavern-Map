@@ -7,8 +7,11 @@
 
 export type { GenerationRequest, GenerationService } from './generation-service';
 export { ExportService } from './export-service';
+export { ImageUploadService, MAX_IMAGE_SIZE_BYTES } from './image-upload-service';
 export { ImportService } from './import-service';
+export { MapDraftService } from './map-draft-service';
 export { MapLibraryService } from './map-library-service';
+export { ThumbnailService, THUMBNAIL_MAX_DIMENSION } from './thumbnail-service';
 export type { MapService } from './map-service';
 export type { TravelService } from './travel-service';
 export type { ViewerService, ViewerToolbar } from './viewer-service.types';

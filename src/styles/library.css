@@ -1,0 +1,72 @@
+/**
+ * Map library styles for SillyTavern Atlas.
+ */
+
+.st-atlas__library {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+  width: min(32em, 92vw);
+  max-height: 70vh;
+}
+
+.st-atlas__library-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+}
+
+.st-atlas__library-spacer {
+  flex: 1 1 auto;
+}
+
+.st-atlas__library-note {
+  font-size: 0.8em;
+  opacity: 0.7;
+}
+
+.st-atlas__library-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25em;
+}
+
+.st-atlas__library-entry {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  padding: 0.4em;
+  border: 1px solid var(--SmartThemeBorderColor, #333);
+  border-radius: 6px;
+}
+
+.st-atlas__library-name {
+  flex: 1 1 auto;
+}
+
+.st-atlas__library-type {
+  font-size: 0.75em;
+  opacity: 0.7;
+  text-transform: capitalize;
+}
+
+.st-atlas__library-btn--danger {
+  color: var(--SmartThemeFontColorInverted, #ff5555);
+}
+
+.st-atlas__library-empty {
+  opacity: 0.7;
+  text-align: center;
+  padding: 1em;
+}
+
+@media (max-width: 600px) {
+  .st-atlas__library-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
