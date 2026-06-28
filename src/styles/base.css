@@ -1,0 +1,48 @@
+/**
+ * Base styles for SillyTavern Atlas.
+ *
+ * Every selector is prefixed with `.st-atlas` or `[data-st-atlas]`
+ * (plan §16) to avoid collisions with host styles. Colors and chrome
+ * follow the host theme via CSS variables (plan §3.4).
+ */
+
+.st-atlas {
+  box-sizing: border-box;
+}
+
+.st-atlas *,
+.st-atlas *::before,
+.st-atlas *::after {
+  box-sizing: border-box;
+}
+
+.st-atlas__settings-header {
+  cursor: pointer;
+}
+
+.st-atlas__settings-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+  padding: 0.5em;
+}
+
+.st-atlas__settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5em;
+}
+
+.st-atlas__settings-label {
+  flex: 0 0 auto;
+}
+
+.st-atlas__select {
+  flex: 1 1 auto;
+  min-width: 8em;
+}
+
+.st-atlas__checkbox {
+  flex: 0 0 auto;
+}

@@ -1,0 +1,50 @@
+/**
+ * Panel styles for SillyTavern Atlas.
+ *
+ * The panel is hidden by default and revealed by toggling the
+ * `st-atlas__panel--open` class (see lifecycle.ts). It follows the host
+ * theme via CSS variables.
+ */
+
+.st-atlas__panel {
+  position: fixed;
+  top: var(--topBarBlockSize, 4em);
+  right: 1em;
+  width: min(32em, 90vw);
+  max-height: 80vh;
+  display: none;
+  flex-direction: column;
+  z-index: 10000;
+  background: var(--SmartThemeBlurTintColor, rgba(20, 20, 30, 0.9));
+  color: var(--SmartThemeBodyColor, #e0e0e0);
+  border: 1px solid var(--SmartThemeBorderColor, #333);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px var(--black30a, rgba(0, 0, 0, 0.3));
+  overflow: hidden;
+}
+
+.st-atlas__panel--open {
+  display: flex;
+}
+
+.st-atlas__panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5em;
+  padding: 0.5em 0.75em;
+  border-bottom: 1px solid var(--SmartThemeBorderColor, #333);
+}
+
+.st-atlas__panel-title {
+  font-weight: 600;
+}
+
+.st-atlas__panel-close {
+  cursor: pointer;
+}
+
+.st-atlas__panel-body {
+  padding: 1em;
+  line-height: 1.4;
+}

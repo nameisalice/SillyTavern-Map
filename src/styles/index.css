@@ -1,0 +1,10 @@
+/**
+ * Entry stylesheet for SillyTavern Atlas.
+ *
+ * Imported by src/index.ts so webpack extracts it to dist/style.css.
+ * Component styles are split into small files (plan §5) and composed
+ * here.
+ */
+
+@import './base.css';
+@import './panel.css';

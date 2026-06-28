@@ -1,0 +1,41 @@
+{
+  "name": "sillytavern-atlas",
+  "version": "0.1.0",
+  "description": "SillyTavern Atlas — a lightweight interactive map extension for SillyTavern.",
+  "license": "MIT",
+  "author": "Atlas contributors",
+  "homepage": "https://github.com/nameisalice/SillyTavern-Map",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nameisalice/SillyTavern-Map.git"
+  },
+  "scripts": {
+    "dev": "webpack --mode development --watch",
+    "build": "webpack --mode production",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "npm run typecheck && npm run lint && npm run test && npm run build"
+  },
+  "devDependencies": {
+    "@types/jquery": "^3.5.32",
+    "@typescript-eslint/eslint-plugin": "^8.18.0",
+    "@typescript-eslint/parser": "^8.18.0",
+    "css-loader": "^7.1.2",
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^9.1.0",
+    "jsdom": "^25.0.1",
+    "mini-css-extract-plugin": "^2.9.2",
+    "prettier": "^3.4.2",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.62.0",
+    "vitest": "^2.1.8",
+    "webpack": "^5.97.1",
+    "webpack-cli": "^6.0.1"
+  }
+}

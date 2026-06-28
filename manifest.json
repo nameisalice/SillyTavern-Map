@@ -1,11 +1,12 @@
 {
-    "display_name": "Map Extension",
-    "loading_order": 9,
-    "requires": [],
-    "optional": [],
-    "js": "index.js",
-    "css": "style.css",
-    "author": "Elthial",
-    "version": "1.0.0",
-    "homePage": "https://github.com/Elthial/SillyTavern-Map"
+  "display_name": "Atlas",
+  "loading_order": 9,
+  "requires": [],
+  "optional": [],
+  "js": "dist/index.js",
+  "css": "dist/style.css",
+  "author": "Atlas contributors",
+  "version": "0.1.0",
+  "homePage": "https://github.com/nameisalice/SillyTavern-Map",
+  "auto_update": true
 }
