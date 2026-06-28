@@ -5,6 +5,11 @@ node_modules/
 dist/
 *.tsbuildinfo
 
+# Host-rendered templates copied to the extension root by the build
+# (fetched by renderExtensionTemplateAsync at runtime).
+/panel.html
+/settings.html
+
 # Test / coverage output
 coverage/
 

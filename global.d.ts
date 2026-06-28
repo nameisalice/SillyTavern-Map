@@ -39,6 +39,22 @@ interface SillyTavernContext {
     templateId: string,
     templateData?: Record<string, unknown>,
   ) => Promise<string>;
+  /** Shows a host popup and resolves when it is dismissed. */
+  readonly callGenericPopup: (
+    content: HTMLElement | string,
+    type: number,
+    inputValue?: string,
+    options?: Record<string, unknown>,
+  ) => Promise<unknown>;
+  /** Host popup type enum values (TEXT, CONFIRM, INPUT, DISPLAY...). */
+  readonly POPUP_TYPE: {
+    readonly TEXT: number;
+    readonly CONFIRM: number;
+    readonly INPUT: number;
+    readonly DISPLAY: number;
+  };
+  /** Whether the host considers the current client mobile. */
+  readonly isMobile: () => boolean;
 }
 
 /**

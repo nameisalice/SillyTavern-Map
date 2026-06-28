@@ -7,9 +7,11 @@ image, place locations by clicking, track the player's current location per chat
 nested maps (world → city → building → room), and inject concise spatial context into
 the model's generations.
 
-> **Status:** Foundation + architecture (M0 / M0.5). The build, tests, linting, and
-> bootstrap are working, and the long-term layered architecture is in place. The
-> interactive map viewer arrives in a later milestone.
+> **Status:** Foundation + architecture + map viewer MVP (M0 / M0.5 / M1). The build,
+> tests, linting, and bootstrap are working, the layered architecture is in place, and
+> an interactive image-map viewer with pan, zoom, and markers is bundled with one
+> example map. Storage, the marker editor, per-chat location, prompt injection, and
+> AI generation arrive in later milestones.
 
 This project is a rework of the original proof-of-concept
 [`Elthial/SillyTavern-Map`](https://github.com/Elthial/SillyTavern-Map), which remains
@@ -95,7 +97,12 @@ To test a local build inside a running SillyTavern:
    `data/default-user/extensions/` (third-party) directory.
 3. Restart (or reload) SillyTavern.
 4. Open the Extensions menu and click **Atlas**.
-5. Verify the placeholder panel opens and closes without console errors.
+5. Verify the Atlas panel opens and closes without console errors. The bundled
+   "Southern Marches" example map renders: it pans (drag) and zooms (wheel / pinch),
+   markers are clickable and show a location detail popup, the current-location
+   marker (Mournwood Gate) is visually distinct, and the toolbar buttons
+   (Fit / Center / Zoom in / Zoom out) work. Resizing to a narrow width switches the
+   panel to a fullscreen layout.
 
 ## Architecture
 
@@ -174,9 +181,15 @@ src/
 │  ├─ import-service.ts  ImportService
 │  ├─ export-service.ts  ExportService
 │  └─ viewer-service.ts  ViewerService
-├─ features/             Self-contained feature modules (placeholders)
-│  ├─ viewer/            Map viewer UI
-│  ├─ editor/            Visual editor UI (lazy-loaded)
+├─ features/             Self-contained feature modules
+│  ├─ viewer/            Map viewer (Leaflet adapter, marker layer, tooltip, controller)
+│  ├─ editor/            Visual editor UI (lazy-loaded, placeholder)
+│  ├─ travel/            Travel UI + current-location badge (placeholder)
+│  ├─ generation/        AI generation wizard (optional, placeholder)
+│  ├─ library/           Map library screen (placeholder)
+│  ├─ import/            Import UI (placeholder)
+│  └─ export/            Export UI (placeholder)
+├─ examples/             Bundled example map (Southern Marches) + placeholder artwork
 │  ├─ travel/            Travel UI + current-location badge
 │  ├─ generation/        AI generation wizard (optional)
 │  ├─ library/           Map library screen
@@ -185,7 +198,9 @@ src/
 ├─ ui/                   Currently-mounted UI controllers
 │  ├─ settings-controller.ts  Settings drawer (template-rendered)
 │  └─ panel-controller.ts     Placeholder panel
-├─ templates/            Host-rendered HTML templates (settings, panel)
+├─ templates/            Host-rendered HTML templates (settings, panel); copied to the
+│                        extension root by the build so renderExtensionTemplateAsync
+│                        can fetch them at runtime
 ├─ styles/               Namespaced CSS (.st-atlas / [data-st-atlas])
 └─ assets/               Future binary assets
    ├─ icons/             Custom UI icons

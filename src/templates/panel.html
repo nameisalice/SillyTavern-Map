@@ -1,5 +1,43 @@
 <div class="st-atlas__panel-header">
   <span class="st-atlas__panel-title">Atlas</span>
+  <div class="st-atlas__panel-toolbar">
+    <button
+      type="button"
+      class="st-atlas__toolbar-btn menu_button menu_button_icon"
+      data-st-atlas-action="fit"
+      title="Fit map to viewport"
+      aria-label="Fit map to viewport"
+    >
+      <i class="fa-solid fa-expand"></i>
+    </button>
+    <button
+      type="button"
+      class="st-atlas__toolbar-btn menu_button menu_button_icon"
+      data-st-atlas-action="center"
+      title="Center on current location"
+      aria-label="Center on current location"
+    >
+      <i class="fa-solid fa-location-crosshairs"></i>
+    </button>
+    <button
+      type="button"
+      class="st-atlas__toolbar-btn menu_button menu_button_icon"
+      data-st-atlas-action="zoom-in"
+      title="Zoom in"
+      aria-label="Zoom in"
+    >
+      <i class="fa-solid fa-magnifying-glass-plus"></i>
+    </button>
+    <button
+      type="button"
+      class="st-atlas__toolbar-btn menu_button menu_button_icon"
+      data-st-atlas-action="zoom-out"
+      title="Zoom out"
+      aria-label="Zoom out"
+    >
+      <i class="fa-solid fa-magnifying-glass-minus"></i>
+    </button>
+  </div>
   <button
     type="button"
     class="st-atlas__panel-close menu_button menu_button_icon"
@@ -9,5 +47,5 @@
   </button>
 </div>
 <div class="st-atlas__panel-body">
-  Atlas is ready. The interactive map viewer arrives in a later milestone.
+  <div class="st-atlas__canvas" data-st-atlas="canvas"></div>
 </div>

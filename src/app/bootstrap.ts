@@ -22,10 +22,11 @@ import { EXTENSIONS_MENU_SELECTOR } from '@/constants';
 import { tryGetContext } from '@/st/context';
 import { loadSettings } from '@/st/settings-bridge';
 import { mountSettingsDrawer } from '@/ui/settings-controller';
-import { openAtlasPanel } from '@/ui/panel-controller';
+import { openAtlasPanel, setViewerService } from '@/ui/panel-controller';
 import { logError, logInfo } from '@/core/logger';
 import { EventBus } from '@/core/events';
 import { Container, type DependencyToken, token } from '@/core/container';
+import { AtlasViewerService, type ViewerService } from '@/services/viewer-service';
 
 /**
  * Dependency tokens for the core singletons. Declared here so any
@@ -33,6 +34,8 @@ import { Container, type DependencyToken, token } from '@/core/container';
  * own instance.
  */
 export const EventBusToken: DependencyToken<EventBus> = token<EventBus>('EventBus');
+export const ViewerServiceToken: DependencyToken<ViewerService> =
+  token<ViewerService>('ViewerService');
 
 /** The single shared container instance for the extension lifetime. */
 let container: Container | null = null;
@@ -47,8 +50,9 @@ export function getContainer(): Container {
     return container;
   }
   container = new Container();
-  // EventBus is a pure singleton owned by the container.
-  container.register(EventBusToken, () => new EventBus(), 'singleton');
+  const eventBus = new EventBus();
+  container.register(EventBusToken, () => eventBus, 'singleton');
+  container.register(ViewerServiceToken, () => new AtlasViewerService(eventBus), 'singleton');
   return container;
 }
 
@@ -73,6 +77,10 @@ export async function bootstrap(): Promise<boolean> {
 
   // Load settings first so the logger level is correct for everything below.
   loadSettings();
+
+  // Inject the viewer service into the panel via the container so the
+  // panel never constructs services itself.
+  setViewerService(getContainer().resolve(ViewerServiceToken));
 
   await safeMountSettings();
   mountMenuButton();

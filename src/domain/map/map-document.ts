@@ -7,7 +7,7 @@
  */
 
 /** MIME types accepted for map background images. */
-export type MapImageMimeType = 'image/png' | 'image/jpeg' | 'image/webp';
+export type MapImageMimeType = 'image/png' | 'image/jpeg' | 'image/webp' | 'image/svg+xml';
 
 /** Visual style hints a map document may carry. */
 export interface AtlasMapTheme {
@@ -24,9 +24,18 @@ export interface AtlasMapView {
   readonly initialCenter: readonly [number, number];
 }
 
-/** Image reference inside a map document. */
+/**
+ * Image reference inside a map document.
+ *
+ * In the full storage model (Milestone 2+), `assetId` points at a blob
+ * in the localforage asset store. For bundled or inlined images that
+ * have no stored blob yet, `url` carries a resolvable URL instead.
+ * Exactly one of the two is expected to be set; consumers prefer
+ * `url` when present and fall back to resolving `assetId` via storage.
+ */
 export interface AtlasMapImage {
-  readonly assetId: string;
+  readonly assetId?: string;
+  readonly url?: string;
   readonly width: number;
   readonly height: number;
   readonly mimeType: MapImageMimeType;

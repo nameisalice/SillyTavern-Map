@@ -1,5 +1,6 @@
 const path = require('path');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const CopyPlugin = require('copy-webpack-plugin');
 
 /**
  * Webpack configuration for SillyTavern Atlas.
@@ -8,9 +9,14 @@ const MiniCssExtractPlugin = require('mini-css-extract-plugin');
  *   dist/index.js  -> referenced by manifest.json "js"
  *   dist/style.css -> referenced by manifest.json "css"
  *
- * The extension is loaded by SillyTavern as a classic (non-module) script,
- * so the bundle is built as a non-module library that attaches to the
- * global jQuery ready callback.
+ * The host loads the bundle as a classic (non-module) script, so it is
+ * built as a window library that attaches to the global jQuery ready
+ * callback.
+ *
+ * HTML templates are copied to the repo root (sibling of dist/) because
+ * `renderExtensionTemplateAsync('SillyTavern-Map', id)` fetches
+ * `/scripts/extensions/SillyTavern-Map/<id>.html` — i.e. the extension
+ * folder root, where manifest.json lives.
  */
 module.exports = (env, argv) => {
   const isProduction = argv.mode === 'production';
@@ -26,6 +32,9 @@ module.exports = (env, argv) => {
       library: {
         type: 'window',
       },
+      // Bundled assets (SVG/PNG) are emitted under dist/assets/ and
+      // referenced from the bundle by relative URL.
+      assetModuleFilename: 'assets/[name][ext]',
     },
     devtool: isProduction ? false : 'source-map',
     module: {
@@ -44,11 +53,18 @@ module.exports = (env, argv) => {
           },
         },
         {
+          // Process all CSS, including vendored stylesheets (Leaflet).
           test: /\.css$/,
-          exclude: /node_modules/,
           use: [MiniCssExtractPlugin.loader, 'css-loader'],
         },
         {
+          // Bundled binary/asset artwork referenced from the bundle.
+          test: /\.(png|svg|jpg|jpeg|webp)$/i,
+          exclude: /node_modules/,
+          type: 'asset/resource',
+        },
+        {
+          // HTML read directly as a source string (not host-rendered).
           test: /\.html$/,
           exclude: /node_modules/,
           type: 'asset/source',
@@ -64,6 +80,22 @@ module.exports = (env, argv) => {
     plugins: [
       new MiniCssExtractPlugin({
         filename: 'style.css',
+      }),
+      // Ship host-rendered templates to the extension root so the host
+      // can fetch them at `/scripts/extensions/SillyTavern-Map/<id>.html`.
+      new CopyPlugin({
+        patterns: [
+          {
+            // Ship host-rendered templates to the extension root (the
+            // installed extension folder, sibling of dist/ and
+            // manifest.json) so the host can fetch them at
+            // `/scripts/extensions/<name>/<id>.html`. Copying the
+            // directory (rather than a glob) flattens its contents to
+            // the destination root.
+            from: 'src/templates',
+            to: path.resolve(__dirname),
+          },
+        ],
       }),
     ],
     performance: {

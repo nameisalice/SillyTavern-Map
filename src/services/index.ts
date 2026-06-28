@@ -12,4 +12,5 @@ export type { ExportService } from './export-service';
 export type { ImportService } from './import-service';
 export type { MapService } from './map-service';
 export type { TravelService } from './travel-service';
-export type { ViewerService } from './viewer-service';
+export type { ViewerService, ViewerToolbar } from './viewer-service.types';
+export { AtlasViewerService } from './viewer-service';
