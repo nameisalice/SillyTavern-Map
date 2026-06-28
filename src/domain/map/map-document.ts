@@ -1,10 +1,19 @@
 /**
  * Canonical map document types.
  *
- * Derived from the development plan (§6.1). These are the data contracts
- * the whole extension speaks in: validators, services, storage, and the
- * viewer all reference them. Pure type declarations — no logic.
+ * Milestone 2 establishes `AtlasMapDocument` as the single source of
+ * truth for every map. It is a pure, serializable data structure: no
+ * runtime objects, no file paths, no Leaflet instances, and no mutable
+ * references. Maps reference images through asset ids only.
  */
+
+import type { AtlasLocation } from '@/domain/location';
+import type { AtlasRegion } from '@/domain/region';
+import type { AtlasRoute } from '@/domain/route';
+import type { AtlasMapType } from '@/domain/generation';
+
+/** Current canonical map document version. */
+export const ATLAS_MAP_DOCUMENT_VERSION = 1 as const;
 
 /** MIME types accepted for map background images. */
 export type MapImageMimeType = 'image/png' | 'image/jpeg' | 'image/webp' | 'image/svg+xml';
@@ -27,19 +36,18 @@ export interface AtlasMapView {
 /**
  * Image reference inside a map document.
  *
- * In the full storage model (Milestone 2+), `assetId` points at a blob
- * in the localforage asset store. For bundled or inlined images that
- * have no stored blob yet, `url` carries a resolvable URL instead.
- * Exactly one of the two is expected to be set; consumers prefer
- * `url` when present and fall back to resolving `assetId` via storage.
+ * Persistent maps reference image assets by id. Bundled example maps may
+ * carry an optional `url` during bootstrapping, but import/export and
+ * repository persistence always normalize to an `assetId` reference.
  */
 export interface AtlasMapImage {
-  readonly assetId?: string;
-  readonly url?: string;
+  readonly assetId: string;
   readonly width: number;
   readonly height: number;
   readonly mimeType: MapImageMimeType;
   readonly checksum?: string;
+  /** Optional bundled fallback URL used only by built-in examples. */
+  readonly url?: string;
 }
 
 /** Metadata block for a map document. */
@@ -55,9 +63,11 @@ export interface AtlasMapMetadata {
  * truth for a map's structure.
  */
 export interface AtlasMapDocument {
-  readonly schemaVersion: 1;
+  /** Canonical document version. */
+  readonly version: typeof ATLAS_MAP_DOCUMENT_VERSION;
   readonly id: string;
   readonly name: string;
+  readonly type: AtlasMapType;
   readonly description?: string;
   readonly image: AtlasMapImage;
   readonly parentMapId?: string;
@@ -70,9 +80,9 @@ export interface AtlasMapDocument {
   readonly metadata: AtlasMapMetadata;
 }
 
-// Forward references to sibling domain modules. The concrete interfaces
-// are declared in their own files; importing them here keeps a single
-// `import type { AtlasMapDocument }` entry point for consumers.
-import type { AtlasLocation } from '@/domain/location';
-import type { AtlasRegion } from '@/domain/region';
-import type { AtlasRoute } from '@/domain/route';
+/**
+ * Runtime unknown document accepted by the migration system. Legacy M1
+ * data may still contain `schemaVersion`; validators reject it after
+ * migration.
+ */
+export type UnknownMapDocument = Record<string, unknown>;

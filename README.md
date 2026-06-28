@@ -110,9 +110,11 @@ Atlas is organized in strict layers with a one-way dependency direction. Core is
 shared across every layer.
 
 ```
-UI  →  Features  →  Services  →  Domain  →  Providers  →  Storage
-                          ↑
-                        Core (shared)
+UI  →  Features  →  Services  →  Repositories  →  Storage Providers  →  LocalForage
+                          ↓             ↓
+                        Domain        Domain
+
+Core is shared across layers.
 ```
 
 ### Dependency rules
@@ -122,13 +124,15 @@ UI  →  Features  →  Services  →  Domain  →  Providers  →  Storage
 - **Features** are self-contained vertical slices. A feature depends on Services (and,
   through them, Domain/Providers). A feature never imports another feature's internals —
   features communicate via Services and the EventBus.
-- **Services** coordinate everything. A service depends on Domain types and Provider
-  interfaces, and on other services resolved through the dependency container — **never
-  by constructing them directly** (`new Logger()`, `new SettingsBridge()` inside an
-  unrelated module is forbidden).
+- **Services** coordinate everything. A service depends on Domain types and
+  Repositories, and on other services resolved through the dependency container —
+  **never by constructing them directly** (`new Logger()`, `new SettingsBridge()` inside
+  an unrelated module is forbidden). Services never know the storage implementation.
+- **Repositories** own persistence. They depend on Domain types and Storage Provider
+  interfaces, never on UI/Features/Services and never on localforage directly.
 - **Domain** holds the canonical data contracts and pure logic (validation, migration,
   coordinate normalization, lookup). Domain **must never** import UI, Features,
-  Services, Providers, or Storage.
+  Services, Providers, Repositories, or Storage.
 - **Providers** know how to talk to external services (text models, image endpoints,
   storage backends) and nothing else. Providers **must never** know about UI.
 - **Storage** is the persistence backend behind provider abstractions. The host-backed
@@ -169,12 +173,17 @@ src/
 │  ├─ actions/           Declarative AtlasAction discriminated union
 │  ├─ travel/            Per-chat AtlasChatState, travel history
 │  └─ generation/        Map types, generation presets, metadata
-├─ providers/            External-service abstractions (interfaces only)
+├─ providers/            External-service abstractions
 │  ├─ base/              Shared provider base types
 │  ├─ text/              TextProvider (blueprint generation)
 │  ├─ image/             ImageProvider (unlabeled background generation)
-│  └─ storage/           AssetStore, MapDocumentStore
-├─ services/             Application service boundaries (interfaces only)
+│  └─ storage/           StorageProvider + localforage implementation
+├─ repositories/         Persistence repositories over StorageProvider
+│  ├─ map-repository.ts          Map documents + map index
+│  ├─ asset-repository.ts        Images/thumbnails/icons metadata + bytes
+│  ├─ thumbnail-repository.ts    Thumbnail asset facade
+│  └─ viewer-state-repository.ts Persistent viewer state
+├─ services/             Application services over repositories
 │  ├─ map-service.ts     MapService
 │  ├─ travel-service.ts  TravelService
 │  ├─ generation-service.ts GenerationService
@@ -247,6 +256,34 @@ src/
 composition root and registers the core singletons. Future services resolve their
 dependencies by token (`container.resolve(Token)`) rather than constructing them
 directly, so construction order and wiring live in one auditable place.
+
+### Persistence architecture
+
+Milestone 2 establishes the persistent data model and repository layer:
+
+- **MapDocument** — canonical `AtlasMapDocument` with `version: 1`, `id`, `name`, map
+  `type`, asset-backed `image`, `locations`, `regions`, `routes`, and metadata. It is
+  pure JSON data: no Leaflet objects, no runtime state, no raw paths.
+- **ViewerState** — persisted separately from MapDocument: zoom, center, selected
+  marker, opened popup, current layer, fullscreen state.
+- **ChatState model** — prepared as a model only (active map/current location,
+  discovered locations, fog state reference, campaign id, bookmarks). Chat integration
+  is a later milestone.
+- **Repositories** — `MapRepository`, `AssetRepository`, `ThumbnailRepository`, and
+  `ViewerStateRepository` own persistence. Services never manipulate storage directly.
+- **StorageProvider** — generic `{ save, load, delete, list, exists }` abstraction.
+  `LocalForageStorageProvider` is the browser-local implementation. The current host
+  exposes localforage on `window.localforage`, so Atlas accesses it only through
+  `src/st/localforage-adapter.ts`.
+- **Validation** — `validateMapDocument()` rejects malformed documents: bad ids,
+  duplicate ids, invalid coordinates, broken routes, broken image asset references, and
+  wrong versions. It never silently repairs data.
+- **Migration** — `upgradeDocument()` upgrades old shapes into the canonical current
+  version. Future schema changes should add migrations here instead of breaking old maps.
+- **Import/export** — `AtlasMapPackage` is a portable single-JSON package for M2:
+  manifest + map JSON + base64 assets. Checksums and sizes are verified on import;
+  imports never overwrite existing maps automatically; asset deduplication is by
+  checksum.
 
 ### Future provider architecture
 

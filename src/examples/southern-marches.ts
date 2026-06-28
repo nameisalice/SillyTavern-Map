@@ -67,12 +67,14 @@ const routes: readonly AtlasRoute[] = [
  * for development and the first-run experience.
  */
 export const SOUTHERN_MARCHES: AtlasMapDocument = {
-  schemaVersion: 1,
+  version: 1,
   id: 'southern-marches',
   name: 'Southern Marches',
+  type: 'region',
   description: 'A frontier region of forests, gorges, and old ruins.',
   image: {
-    // Bundled SVG background; no stored blob yet (Milestone 2).
+    assetId: 'southern-marches-background',
+    // Bundled SVG background fallback; repository persistence stores by assetId.
     url: bgUrl,
     width: 1600,
     height: 1000,

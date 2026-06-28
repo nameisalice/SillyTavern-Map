@@ -106,3 +106,41 @@ Providers → Storage`, with a shared `core/` layer.
 - No storage, map library CRUD, marker editor, routes, regions, nested maps, per-chat
   location, prompt injection, slash commands, or AI features. The viewer loads exactly
   one bundled example map.
+
+## [0.3.0] — Unreleased — Milestone 2 (Persistence Layer and Map Repository)
+
+### Added
+
+- Canonical versioned `AtlasMapDocument` (`version: 1`) with map `type`, asset-backed
+  image references, locations, regions, routes, view defaults, theme, and metadata.
+- Persistent `AtlasViewerState` model, separate from MapDocument.
+- Extended chat-state model with campaign id, bookmarks, and fog-state reference (model
+  only; no chat integration yet).
+- Asset model (`AtlasAssetMetadata`) for images, thumbnails, and icons: id, mime,
+  checksum, size, createdAt.
+- Generic `StorageProvider` abstraction with `save`, `load`, `delete`, `list`, and
+  `exists`, plus `LocalForageStorageProvider` backed by SillyTavern's
+  `window.localforage` shim.
+- Repository layer: `MapRepository`, `AssetRepository`, `ThumbnailRepository`, and
+  `ViewerStateRepository`.
+- Map library backend (`MapLibraryService`) for list/search/rename/duplicate/delete.
+- Portable single-JSON `AtlasMapPackage` import/export format: manifest + map JSON +
+  base64 assets.
+- Import/export services with validation, duplicate detection, asset checksum
+  verification, and checksum-based asset deduplication. Imports never overwrite
+  automatically.
+- Migration pipeline (`upgradeDocument`) and validation pipeline (`validateMapDocument`).
+- 13 new persistence-focused tests; 41 total tests passing.
+
+### Changed
+
+- `PLAN/` is now removed from git tracking and ignored, per repository hygiene guidance.
+- `AtlasMapImage.assetId` is canonical again; bundled example maps may keep `url` only
+  as a fallback.
+- `AtlasSettings` now includes a lightweight `mapIndex`; repositories sync index changes
+  through an injected callback rather than importing settings directly.
+
+### Notes
+
+- No editor, upload UI, drawing tools, AI, prompt injection, slash commands, travel, or
+  chat integration were added.

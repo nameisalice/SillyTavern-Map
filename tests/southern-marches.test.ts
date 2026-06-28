@@ -11,8 +11,8 @@ import { describe, expect, it } from 'vitest';
 import { SOUTHERN_MARCHES } from '@/examples/southern-marches';
 
 describe('Southern Marches fixture', () => {
-  it('uses schema version 1', () => {
-    expect(SOUTHERN_MARCHES.schemaVersion).toBe(1);
+  it('uses document version 1', () => {
+    expect(SOUTHERN_MARCHES.version).toBe(1);
   });
 
   it('has a resolvable image (url) and finite dimensions', () => {

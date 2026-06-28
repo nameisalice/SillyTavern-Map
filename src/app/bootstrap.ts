@@ -20,13 +20,21 @@
 
 import { EXTENSIONS_MENU_SELECTOR } from '@/constants';
 import { tryGetContext } from '@/st/context';
-import { loadSettings } from '@/st/settings-bridge';
+import { loadSettings, saveMapIndex } from '@/st/settings-bridge';
 import { mountSettingsDrawer } from '@/ui/settings-controller';
 import { openAtlasPanel, setViewerService } from '@/ui/panel-controller';
 import { logError, logInfo } from '@/core/logger';
 import { EventBus } from '@/core/events';
 import { Container, type DependencyToken, token } from '@/core/container';
 import { AtlasViewerService, type ViewerService } from '@/services/viewer-service';
+import { LocalForageStorageProvider, type StorageProvider } from '@/providers/storage';
+import {
+  AssetRepository,
+  MapRepository,
+  ThumbnailRepository,
+  ViewerStateRepository,
+} from '@/repositories';
+import { ExportService, ImportService, MapLibraryService } from '@/services';
 
 /**
  * Dependency tokens for the core singletons. Declared here so any
@@ -34,6 +42,22 @@ import { AtlasViewerService, type ViewerService } from '@/services/viewer-servic
  * own instance.
  */
 export const EventBusToken: DependencyToken<EventBus> = token<EventBus>('EventBus');
+export const StorageProviderToken: DependencyToken<StorageProvider> =
+  token<StorageProvider>('StorageProvider');
+export const MapRepositoryToken: DependencyToken<MapRepository> =
+  token<MapRepository>('MapRepository');
+export const AssetRepositoryToken: DependencyToken<AssetRepository> =
+  token<AssetRepository>('AssetRepository');
+export const ThumbnailRepositoryToken: DependencyToken<ThumbnailRepository> =
+  token<ThumbnailRepository>('ThumbnailRepository');
+export const ViewerStateRepositoryToken: DependencyToken<ViewerStateRepository> =
+  token<ViewerStateRepository>('ViewerStateRepository');
+export const ImportServiceToken: DependencyToken<ImportService> =
+  token<ImportService>('ImportService');
+export const ExportServiceToken: DependencyToken<ExportService> =
+  token<ExportService>('ExportService');
+export const MapLibraryServiceToken: DependencyToken<MapLibraryService> =
+  token<MapLibraryService>('MapLibraryService');
 export const ViewerServiceToken: DependencyToken<ViewerService> =
   token<ViewerService>('ViewerService');
 
@@ -51,7 +75,33 @@ export function getContainer(): Container {
   }
   container = new Container();
   const eventBus = new EventBus();
+  const storage = new LocalForageStorageProvider();
+  const mapRepository = new MapRepository(storage, saveMapIndex);
+  const assetRepository = new AssetRepository(storage);
+  const thumbnailRepository = new ThumbnailRepository(assetRepository);
+  const viewerStateRepository = new ViewerStateRepository(storage);
+
   container.register(EventBusToken, () => eventBus, 'singleton');
+  container.register(StorageProviderToken, () => storage, 'singleton');
+  container.register(MapRepositoryToken, () => mapRepository, 'singleton');
+  container.register(AssetRepositoryToken, () => assetRepository, 'singleton');
+  container.register(ThumbnailRepositoryToken, () => thumbnailRepository, 'singleton');
+  container.register(ViewerStateRepositoryToken, () => viewerStateRepository, 'singleton');
+  container.register(
+    ImportServiceToken,
+    () => new ImportService(mapRepository, assetRepository),
+    'singleton',
+  );
+  container.register(
+    ExportServiceToken,
+    () => new ExportService(mapRepository, assetRepository),
+    'singleton',
+  );
+  container.register(
+    MapLibraryServiceToken,
+    () => new MapLibraryService(mapRepository, viewerStateRepository),
+    'singleton',
+  );
   container.register(ViewerServiceToken, () => new AtlasViewerService(eventBus), 'singleton');
   return container;
 }

@@ -65,6 +65,18 @@ declare const SillyTavern: {
   readonly getContext: () => SillyTavernContext;
 };
 
+/** Minimal localforage surface exposed by SillyTavern's public/lib.js shim. */
+interface AtlasLocalForage {
+  readonly setItem: <T>(key: string, value: T) => Promise<T>;
+  readonly getItem: <T>(key: string) => Promise<T | null>;
+  readonly removeItem: (key: string) => Promise<void>;
+  readonly keys: () => Promise<string[]>;
+}
+
+interface Window {
+  readonly localforage?: AtlasLocalForage;
+}
+
 /**
  * jQuery is provided by the host. The extension uses it only for the
  * `jQuery(async () => ...)` ready callback and minimal DOM composition,

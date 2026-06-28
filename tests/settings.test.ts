@@ -26,6 +26,7 @@ describe('mergeDefaults', () => {
       enabled: false,
       openMode: 'fullscreen',
       loggingLevel: 'debug',
+      mapIndex: [],
     });
   });
 
@@ -57,6 +58,7 @@ describe('mergeDefaults', () => {
       enabled: false,
       openMode: DEFAULT_SETTINGS.openMode,
       loggingLevel: DEFAULT_SETTINGS.loggingLevel,
+      mapIndex: DEFAULT_SETTINGS.mapIndex,
     });
   });
 });

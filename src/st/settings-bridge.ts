@@ -35,6 +35,7 @@ export function mergeDefaults(stored: Record<string, unknown>): AtlasSettings {
     enabled: stored['enabled'],
     openMode: stored['openMode'],
     loggingLevel: stored['loggingLevel'],
+    mapIndex: stored['mapIndex'],
   };
 
   const enabled = typeof known.enabled === 'boolean' ? known.enabled : DEFAULT_SETTINGS.enabled;
@@ -52,7 +53,22 @@ export function mergeDefaults(stored: Record<string, unknown>): AtlasSettings {
       ? known.loggingLevel
       : DEFAULT_SETTINGS.loggingLevel;
 
-  return { enabled, openMode, loggingLevel };
+  const mapIndex = Array.isArray(known.mapIndex)
+    ? known.mapIndex.filter((entry): entry is AtlasSettings['mapIndex'][number] => {
+        if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+          return false;
+        }
+        const item = entry as Record<string, unknown>;
+        return (
+          typeof item['id'] === 'string' &&
+          typeof item['name'] === 'string' &&
+          typeof item['type'] === 'string' &&
+          typeof item['updatedAt'] === 'string'
+        );
+      })
+    : DEFAULT_SETTINGS.mapIndex;
+
+  return { enabled, openMode, loggingLevel, mapIndex };
 }
 
 /**
@@ -78,9 +94,15 @@ export function saveSettings(next: Partial<AtlasSettings>): void {
     enabled: next.enabled ?? current.enabled,
     openMode: next.openMode ?? current.openMode,
     loggingLevel: next.loggingLevel ?? current.loggingLevel,
+    mapIndex: next.mapIndex ?? current.mapIndex,
   };
 
   context.extensionSettings[SETTINGS_KEY] = updated;
   setLogLevel(updated.loggingLevel);
   context.saveSettingsDebounced();
+}
+
+/** Stores the lightweight map index in extension settings. */
+export function saveMapIndex(mapIndex: AtlasSettings['mapIndex']): void {
+  saveSettings({ mapIndex });
 }

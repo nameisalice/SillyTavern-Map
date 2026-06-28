@@ -1,9 +1,9 @@
 /**
- * Per-chat travel state types.
+ * Per-chat Atlas state model.
  *
- * Derived from the development plan (§6.6). The current map, current
- * location, discovery state, custom markers, and travel history are
- * stored under a single `chatMetadata` key. Pure type declarations.
+ * Derived from the development plan (§6.6) and Milestone 2's ChatState
+ * requirements. This is a model only in M2; no chatMetadata integration
+ * is implemented yet.
  */
 
 /** Source that initiated a travel event. */
@@ -19,6 +19,21 @@ export interface AtlasCustomMarker {
   readonly icon?: string;
 }
 
+/** A bookmark saved by the user for quick return. */
+export interface AtlasBookmark {
+  readonly id: string;
+  readonly mapId: string;
+  readonly locationId?: string;
+  readonly label: string;
+  readonly createdAt: string;
+}
+
+/** A fog-of-war state reference. Actual fog data is stored separately. */
+export interface AtlasFogStateRef {
+  readonly id: string;
+  readonly mapId: string;
+}
+
 /** A single travel history entry. */
 export interface AtlasTravelHistoryEntry {
   readonly mapId: string;
@@ -30,16 +45,19 @@ export interface AtlasTravelHistoryEntry {
 
 /**
  * The full per-chat Atlas state, stored under the `sillytavern_atlas`
- * chatMetadata key. Do not cache the `chatMetadata` object reference
- * globally; retrieve it from `getContext()` whenever the current chat
- * may have changed.
+ * chatMetadata key in a later milestone. Do not cache the `chatMetadata`
+ * object reference globally; retrieve it from `getContext()` whenever
+ * the current chat may have changed.
  */
 export interface AtlasChatState {
-  readonly schemaVersion: 1;
+  readonly version: 1;
   readonly activeMapId?: string;
   readonly activeLocationId?: string;
+  readonly campaignId?: string;
   readonly discoveredLocationIds: readonly string[];
   readonly discoveredRegionIds: readonly string[];
+  readonly fogStateRef?: AtlasFogStateRef;
+  readonly bookmarks: readonly AtlasBookmark[];
   readonly customMarkers: readonly AtlasCustomMarker[];
   readonly travelHistory: readonly AtlasTravelHistoryEntry[];
   readonly lastInjectedContextHash?: string;
