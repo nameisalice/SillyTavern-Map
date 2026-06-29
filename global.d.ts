@@ -12,6 +12,12 @@
 /** Stable log prefix used by every Atlas log line. */
 declare const SillyTavernAtlasBuild: unknown;
 
+interface SillyTavernEventEmitter {
+  on(event: string, listener: (...args: unknown[]) => void | Promise<void>): void;
+  removeListener(event: string, listener: (...args: unknown[]) => void): void;
+  once(event: string, listener: (...args: unknown[]) => void): void;
+}
+
 /**
  * Subset of the object returned by `SillyTavern.getContext()`.
  * Only fields Atlas relies on are declared; new fields are added as
@@ -19,7 +25,7 @@ declare const SillyTavernAtlasBuild: unknown;
  */
 interface SillyTavernContext {
   /** Event bus used to subscribe to host lifecycle events. */
-  readonly eventSource: JQuery;
+  readonly eventSource: SillyTavernEventEmitter;
   /** Map of host event type names to their string values. */
   readonly eventTypes: Record<string, string>;
   /** Per-extension settings object stored under the extension key. */

@@ -42,7 +42,9 @@ export class ViewerController {
   private readonly eventBus: EventBus;
   private readonly bindToolbar: ToolbarBinder;
   private readonly showDetail: ShowLocationDetail;
+  private readonly requestTravel: (locationId: string) => void;
   private readonly imageUrlOverride?: string;
+  private readonly discoveredLocationIds: ReadonlySet<string>;
   private currentLocationId: string | null;
 
   constructor(args: {
@@ -51,6 +53,8 @@ export class ViewerController {
     eventBus: EventBus;
     bindToolbar: ToolbarBinder;
     showDetail: ShowLocationDetail;
+    requestTravel: (locationId: string) => void;
+    discoveredLocationIds: ReadonlySet<string>;
     /** Repository-resolved object URL for a persistent map's image. */
     imageUrlOverride?: string;
     currentLocationId?: string | null;
@@ -60,6 +64,8 @@ export class ViewerController {
     this.eventBus = args.eventBus;
     this.bindToolbar = args.bindToolbar;
     this.showDetail = args.showDetail;
+    this.requestTravel = args.requestTravel;
+    this.discoveredLocationIds = args.discoveredLocationIds;
     this.imageUrlOverride = args.imageUrlOverride;
     this.currentLocationId = args.currentLocationId ?? args.document.defaultLocationId ?? null;
   }
@@ -83,7 +89,7 @@ export class ViewerController {
     if (map) {
       this.markers = new MarkerLayer(map, dims, (locationId) => this.onMarkerSelected(locationId));
       this.markers.render(
-        buildMarkerData(this.document, this.currentLocationId, new Set(this.discoveredIds())),
+        buildMarkerData(this.document, this.currentLocationId, this.discoveredLocationIds),
       );
     }
 
@@ -127,17 +133,13 @@ export class ViewerController {
     this.markers?.select(locationId);
     const location = this.document.locations.find((l) => l.id === locationId);
     if (location) {
-      void this.showDetail(buildLocationDetailElement(location), location);
+      const isCurrent = locationId === this.currentLocationId;
+      void this.showDetail(
+        buildLocationDetailElement(location, isCurrent, () => this.requestTravel(locationId)),
+        location,
+      );
     }
     this.eventBus.emit('MarkerSelected', { locationId });
-  }
-
-  /**
-   * Returns the ids discovered so far. For M1 there is no per-chat
-   * discovery state, so every non-hidden location is considered shown.
-   */
-  private discoveredIds(): string[] {
-    return [];
   }
 
   /** Closes the viewer without destroying it (panel hidden). */

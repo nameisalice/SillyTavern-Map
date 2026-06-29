@@ -92,6 +92,11 @@ export class ImageUploadService {
     }
     return { data: asset.data, metadata: asset.metadata };
   }
+
+  /** Deletes an asset by id from the repository. */
+  async deleteAsset(assetId: string): Promise<void> {
+    await this.assets.deleteAsset(assetId);
+  }
 }
 
 /** Normalizes a browser MIME string into a known Atlas type. */

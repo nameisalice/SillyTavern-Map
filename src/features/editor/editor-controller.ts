@@ -59,6 +59,7 @@ export class EditorController {
   private readonly draftService: MapDraftService;
   private readonly eventBus: EventBus;
   private readonly onSaved: OnSavedCallback;
+  private readonly onExit: () => void;
   private readonly imageUrlOverride?: string;
   private addingLocation = false;
 
@@ -72,6 +73,7 @@ export class EditorController {
     popup: EditorPopup;
     draftService: MapDraftService;
     onSaved: OnSavedCallback;
+    onExit: () => void;
   }) {
     this.container = args.container;
     this.propertyHost = args.propertyHost;
@@ -82,6 +84,7 @@ export class EditorController {
     this.popup = args.popup;
     this.draftService = args.draftService;
     this.onSaved = args.onSaved;
+    this.onExit = args.onExit;
     this.panel = new PropertyPanel(this.propertyHost, (values) => this.onPropertyChange(values));
     this.session.subscribe(() => this.render());
   }
@@ -183,6 +186,7 @@ export class EditorController {
       }
     }
     this.dispose();
+    this.onExit();
   }
 
   /** Renders markers + property panel from the current session state. */

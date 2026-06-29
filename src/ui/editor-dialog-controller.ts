@@ -22,6 +22,10 @@ const popup: EditorPopup = async (content, type) => {
   return (await context.callGenericPopup(content, popupType)) as number;
 };
 
+interface PopupInstance {
+  complete(result: number): void;
+}
+
 /** Opens the editor for a map document inside a host popup. */
 export async function openEditor(args: {
   document: AtlasMapDocument;
@@ -53,6 +57,9 @@ export async function openEditor(args: {
     return;
   }
 
+  let allowedClose = false;
+  let activePopup: PopupInstance | null = null;
+
   const controller = new EditorController({
     container: canvas,
     propertyHost,
@@ -63,6 +70,12 @@ export async function openEditor(args: {
     popup,
     draftService: args.draftService,
     onSaved: args.onSaved,
+    onExit: () => {
+      allowedClose = true;
+      if (activePopup) {
+        activePopup.complete(0);
+      }
+    },
   });
 
   // beforeunload guard: only while the editor is open and dirty.
@@ -77,12 +90,20 @@ export async function openEditor(args: {
   const context = getContext();
   try {
     controller.open();
-    await context.callGenericPopup(root, context.POPUP_TYPE.TEXT);
+    // Host callGenericPopup setup with onClosing callback to intercept popup closing
+    await context.callGenericPopup(root, context.POPUP_TYPE.TEXT, '', {
+      onClosing: (popupInstance: PopupInstance) => {
+        activePopup = popupInstance;
+        if (allowedClose) {
+          return true;
+        }
+        void controller.exit();
+        return false;
+      },
+    });
   } finally {
     // Popup closed by the host: ensure the editor is disposed and the
-    // guard removed. If dirty, the editor's own exit flow is bypassed
-    // here because the host already dismissed the dialog; unsaved
-    // changes remain recoverable until the session is disposed.
+    // guard removed.
     controller.dispose();
     window.removeEventListener('beforeunload', beforeUnload);
   }

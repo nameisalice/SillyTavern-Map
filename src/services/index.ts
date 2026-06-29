@@ -13,6 +13,7 @@ export { MapDraftService } from './map-draft-service';
 export { MapLibraryService } from './map-library-service';
 export { ThumbnailService, THUMBNAIL_MAX_DIMENSION } from './thumbnail-service';
 export type { MapService } from './map-service';
-export type { TravelService } from './travel-service';
+export type { TravelService, TravelResult } from './travel-service.types';
+export { AtlasTravelService } from './travel-service';
 export type { ViewerService, ViewerToolbar } from './viewer-service.types';
 export { AtlasViewerService } from './viewer-service';

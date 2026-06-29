@@ -187,12 +187,11 @@ async function resolveObjectUrl(
 }
 
 /** Cleans up an orphan draft asset after a failed creation. */
-async function cleanupAsset(assetId: string, draftService: MapDraftService): Promise<void> {
+async function cleanupAsset(assetId: string, _draftService: MapDraftService): Promise<void> {
   try {
     // The draft service does not expose delete; the upload service does
-    // through its asset repository. We reuse the injected upload service.
-    await getUploadService().loadAsset(assetId);
-    void draftService;
+    // properly now. We call deleteAsset on the injected upload service.
+    await getUploadService().deleteAsset(assetId);
   } catch {
     // Best-effort cleanup; logged but non-fatal.
   }

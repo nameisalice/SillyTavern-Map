@@ -16,6 +16,7 @@ import { getContext } from '@/st/context';
 import { bindPanel, closePanel, openPanel } from '@/app/lifecycle';
 import { logError, logInfo } from '@/core/logger';
 import type { ViewerService, ViewerToolbar } from '@/services/viewer-service.types';
+import type { TravelService } from '@/services/travel-service.types';
 import { ViewerController } from '@/features/viewer/viewer-controller';
 
 /** Lazily-created root element so the panel is built only once. */
@@ -24,6 +25,16 @@ let panelRoot: HTMLElement | null = null;
 let viewerController: ViewerController | null = null;
 /** Injected by the composition root. */
 let viewerService: ViewerService | null = null;
+/** Injected by the composition root. */
+let travelService: TravelService | null = null;
+
+/**
+ * Injects the travel service. Called once by bootstrap before the panel
+ * is first opened.
+ */
+export function setTravelService(service: TravelService): void {
+  travelService = service;
+}
 
 /**
  * Injects the viewer service. Called once by bootstrap before the panel
@@ -31,6 +42,30 @@ let viewerService: ViewerService | null = null;
  */
 export function setViewerService(service: ViewerService): void {
   viewerService = service;
+
+  // Bind reload/refresh when active map or chat changes.
+  const bus = service.getEventBus();
+  bus.subscribe('ChatAtlasStateLoaded', () => {
+    updateLocationBadge();
+    void reloadViewer();
+  });
+  bus.subscribe('ActiveMapChanged', () => {
+    updateLocationBadge();
+    void reloadViewer();
+  });
+  bus.subscribe('LocationChanged', () => {
+    updateLocationBadge();
+    void reloadViewer();
+  });
+}
+
+/** Recreates the viewer. Called when chat state or map changes. */
+export function reloadViewer(): void {
+  if (viewerController) {
+    viewerController.dispose();
+    viewerController = null;
+  }
+  void mountViewer();
 }
 
 /**
@@ -140,6 +175,12 @@ function wirePanelControls(root: HTMLElement): void {
  * Runs once; subsequent calls are no-ops (the viewer instance is reused
  * across reopens — no listener duplication).
  */
+/**
+ * Mounts the viewer into the panel canvas, constructing the
+ * `ViewerController` with dependencies injected from the service.
+ * Runs once; subsequent calls are no-ops (the viewer instance is reused
+ * across reopens — no listener duplication).
+ */
 async function mountViewer(): Promise<void> {
   if (viewerController || !panelRoot || !viewerService) {
     return;
@@ -151,7 +192,15 @@ async function mountViewer(): Promise<void> {
   }
   try {
     const service = viewerService;
-    const resolved = await service.ensureLoaded();
+    const activeMapId = travelService?.getActiveMapId();
+    const currentLocId = travelService?.getCurrentLocationId() ?? undefined;
+    const chatState = await travelService?.loadChatState();
+    const discoveredLocationIds = new Set(chatState?.discoveredLocationIds ?? []);
+
+    const resolved = activeMapId
+      ? await service.loadMap(activeMapId)
+      : await service.ensureLoaded();
+
     viewerController = new ViewerController({
       container: canvas,
       document: resolved.document,
@@ -159,11 +208,93 @@ async function mountViewer(): Promise<void> {
       eventBus: service.getEventBus(),
       bindToolbar: (commands: ViewerToolbar) => bindToolbar(commands),
       showDetail: (element) => service.showLocationDetail(element),
+      requestTravel: (locationId) => void handleTravel(locationId),
+      discoveredLocationIds,
+      currentLocationId: currentLocId,
     });
     viewerController.open();
+    updateLocationBadge();
   } catch (error) {
     logError('Failed to mount map viewer.', error);
   }
+}
+
+/** Handles location travel requests by prompting for confirmation and overrides. */
+async function handleTravel(locationId: string): Promise<void> {
+  if (!travelService || !viewerService) {
+    return;
+  }
+  const activeMap = viewerService.getActiveMap();
+  if (!activeMap) {
+    return;
+  }
+  const location = activeMap.locations.find((l) => l.id === locationId);
+  if (!location) {
+    return;
+  }
+
+  // Travel confirmation popup
+  const context = getContext();
+  const confirmResult = (await context.callGenericPopup(
+    `Do you want to travel to "${location.name}"?`,
+    context.POPUP_TYPE.CONFIRM,
+  )) as number;
+
+  if (confirmResult !== 1) {
+    return;
+  }
+
+  // Attempt travel
+  const res = await travelService.travelTo(locationId, 'click', false);
+  if (!res.success && res.requiresOverride) {
+    // Route override confirmation popup
+    const overrideResult = (await context.callGenericPopup(
+      `No direct route exists to "${location.name}". Travel anyway?`,
+      context.POPUP_TYPE.CONFIRM,
+    )) as number;
+
+    if (overrideResult === 1) {
+      await travelService.travelTo(locationId, 'click', true);
+    }
+  } else if (!res.success && res.error) {
+    await context.callGenericPopup(res.error, context.POPUP_TYPE.TEXT);
+  }
+}
+
+/**
+ * Updates the current-location badge appended to the SillyTavern
+ * chat input container (#send_form).
+ */
+export function updateLocationBadge(): void {
+  const sendForm = document.querySelector('#send_form');
+  if (!sendForm) {
+    return;
+  }
+
+  let badge = document.querySelector('#st-atlas-location-badge') as HTMLElement | null;
+  if (!badge) {
+    badge = document.createElement('div');
+    badge.id = 'st-atlas-location-badge';
+    badge.className = 'st-atlas__location-badge';
+    // Append at the beginning of the form
+    sendForm.prepend(badge);
+  }
+
+  const mapId = travelService?.getActiveMapId();
+  const locId = travelService?.getCurrentLocationId();
+
+  if (!mapId) {
+    badge.style.display = 'none';
+    return;
+  }
+
+  badge.style.display = 'inline-flex';
+  const activeMap = viewerService?.getActiveMap();
+  const mapName = activeMap?.name ?? mapId;
+  const location = activeMap?.locations.find((l) => l.id === locId);
+  const locName = location?.name ?? locId ?? 'Unknown Location';
+
+  badge.textContent = `${mapName} / ${locName}`;
 }
 
 /**

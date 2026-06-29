@@ -41,7 +41,11 @@ export function buildLocationDetail(location: AtlasLocation): LocationDetail {
  * Builds a safe DOM fragment for a location detail. Uses `textContent`
  * for all dynamic values to prevent HTML injection.
  */
-export function buildLocationDetailElement(location: AtlasLocation): HTMLElement {
+export function buildLocationDetailElement(
+  location: AtlasLocation,
+  isCurrent?: boolean,
+  onTravelClick?: () => void,
+): HTMLElement {
   const { title, lines } = buildLocationDetail(location);
   const root = document.createElement('div');
   root.className = 'st-atlas__location-detail';
@@ -57,5 +61,18 @@ export function buildLocationDetailElement(location: AtlasLocation): HTMLElement
     p.textContent = line;
     root.append(p);
   }
+
+  if (onTravelClick && !isCurrent) {
+    const btnContainer = document.createElement('div');
+    btnContainer.className = 'st-atlas__location-detail-actions';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'st-atlas__travel-btn menu_button';
+    btn.textContent = 'Travel Here';
+    btn.addEventListener('click', onTravelClick);
+    btnContainer.append(btn);
+    root.append(btnContainer);
+  }
+
   return root;
 }

@@ -22,7 +22,7 @@ import { EXTENSIONS_MENU_SELECTOR } from '@/constants';
 import { tryGetContext } from '@/st/context';
 import { loadSettings, saveMapIndex } from '@/st/settings-bridge';
 import { mountSettingsDrawer } from '@/ui/settings-controller';
-import { openAtlasPanel, setViewerService } from '@/ui/panel-controller';
+import { openAtlasPanel, setViewerService, setTravelService } from '@/ui/panel-controller';
 import { openMapLibrary } from '@/ui/map-library-controller';
 import { openEditor } from '@/ui/editor-dialog-controller';
 import { openCreateMapDialog, setCreateMapUploadService } from '@/ui/create-map-controller';
@@ -44,6 +44,8 @@ import {
   MapDraftService,
   MapLibraryService,
   ThumbnailService,
+  AtlasTravelService,
+  type TravelService,
 } from '@/services';
 
 /**
@@ -74,6 +76,8 @@ export const ImageUploadServiceToken: DependencyToken<ImageUploadService> =
   token<ImageUploadService>('ImageUploadService');
 export const ThumbnailServiceToken: DependencyToken<ThumbnailService> =
   token<ThumbnailService>('ThumbnailService');
+export const TravelServiceToken: DependencyToken<TravelService> =
+  token<TravelService>('TravelService');
 export const ViewerServiceToken: DependencyToken<ViewerService> =
   token<ViewerService>('ViewerService');
 
@@ -134,6 +138,11 @@ export function getContainer(): Container {
     'singleton',
   );
   container.register(
+    TravelServiceToken,
+    () => new AtlasTravelService(mapRepository, eventBus),
+    'singleton',
+  );
+  container.register(
     ViewerServiceToken,
     () => new AtlasViewerService(eventBus, mapRepository, assetRepository),
     'singleton',
@@ -167,6 +176,24 @@ export async function bootstrap(): Promise<boolean> {
   // panel never constructs services itself.
   setViewerService(getContainer().resolve(ViewerServiceToken));
   setCreateMapUploadService(getContainer().resolve(ImageUploadServiceToken));
+  setTravelService(getContainer().resolve(TravelServiceToken));
+
+  // Seed the bundled map into the repository on first run if missing
+  try {
+    const maps = getContainer().resolve(MapRepositoryToken);
+    const { SOUTHERN_MARCHES } = await import('@/examples/southern-marches');
+    if (!(await maps.exists(SOUTHERN_MARCHES.id))) {
+      await maps.save(SOUTHERN_MARCHES);
+      logInfo('Seeded bundled example map into repository.');
+    }
+  } catch (error) {
+    logError('Failed to seed bundled example map.', error);
+  }
+
+  // Initialize and run the travel/chat state service
+  const travelService = getContainer().resolve(TravelServiceToken) as AtlasTravelService;
+  travelService.initialize();
+  void travelService.reconcileActiveChatState();
 
   await safeMountSettings();
   mountMenuButton();
@@ -222,12 +249,13 @@ async function openLibraryFlow(): Promise<void> {
   const libraryService = c.resolve(MapLibraryServiceToken);
   const viewerService = c.resolve(ViewerServiceToken);
   const draftService = c.resolve(MapDraftServiceToken);
+  const travelService = c.resolve(TravelServiceToken);
   const eventBus = c.resolve(EventBusToken);
   try {
     await openMapLibrary(
       libraryService,
       {
-        openInViewer: (mapId) => void openMapInViewMode(mapId, viewerService, eventBus),
+        openInViewer: (mapId) => void openMapInViewMode(mapId, viewerService, travelService),
         openInEditor: (mapId) =>
           void openMapInEditorMode(mapId, viewerService, draftService, eventBus),
         createMap: () => void openCreateMapFlow(draftService, viewerService, eventBus),
@@ -250,12 +278,12 @@ async function openLibraryFlow(): Promise<void> {
 async function openMapInViewMode(
   mapId: string,
   viewerService: ViewerService,
-  eventBus: EventBus,
+  travelService: TravelService,
 ): Promise<void> {
   try {
+    await travelService.setActiveMapId(mapId);
     await viewerService.loadMap(mapId);
     openAtlasPanel();
-    eventBus.emit('MapOpened', { mapId });
   } catch (error) {
     logError('Failed to open map in viewer.', error);
   }

@@ -55,6 +55,25 @@ export interface AtlasEventMap {
   EditorLocationSelected: { readonly mapId: string; readonly locationId: string };
   /** Fired when the editor mode (edit/preview) changes. */
   EditorModeChanged: { readonly mapId: string; readonly mode: 'edit' | 'preview' };
+  /** Fired when the active map for the current chat changes. */
+  ActiveMapChanged: { readonly oldMapId?: string; readonly newMapId?: string };
+  /** Fired when location or region discoveries change. */
+  DiscoveryChanged: {
+    readonly locationIds: readonly string[];
+    readonly regionIds: readonly string[];
+  };
+  /** Fired when a chat's Atlas state is loaded. */
+  ChatAtlasStateLoaded: { readonly chatState: unknown };
+  /** Fired when a travel history entry is appended. */
+  TravelRecorded: {
+    readonly entry: {
+      readonly mapId: string;
+      readonly fromLocationId?: string;
+      readonly toLocationId: string;
+      readonly timestamp: string;
+      readonly source: string;
+    };
+  };
 }
 
 /** Any event name in the map. */

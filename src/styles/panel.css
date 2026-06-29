@@ -48,3 +48,21 @@
   padding: 1em;
   line-height: 1.4;
 }
+
+/* Chat Input Location Badge */
+.st-atlas__location-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.8em;
+  opacity: 0.85;
+  padding: 0.25em 0.5em;
+  border-radius: 4px;
+  background: var(--SmartThemeBlurTintColor, rgba(30, 30, 40, 0.4));
+  border: 1px solid var(--SmartThemeBorderColor, #444);
+  color: var(--SmartThemeBodyColor, #fff);
+  margin: 0.25em 0.5em;
+  max-width: fit-content;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
