@@ -16,28 +16,12 @@ import { loadChatMetadataState, saveChatMetadataState } from '@/st/chat-state-br
 import type { MapRepository } from '@/repositories';
 import type { EventBus } from '@/core/events';
 import { logInfo, logWarn } from '@/core/logger';
-import { tryGetContext } from '@/st/context';
 
 export class AtlasTravelService implements TravelService {
   constructor(
     private readonly maps: MapRepository,
     private readonly eventBus: EventBus,
   ) {}
-
-  /** Wires up host event listeners. Called once by the composition root. */
-  initialize(): void {
-    const context = tryGetContext();
-    if (!context) {
-      return;
-    }
-    const { eventSource, eventTypes } = context;
-
-    // Listen to host events using standard eventSource.on()
-    eventSource.on(eventTypes.APP_READY, () => void this.onHostChatSwitch('app_ready'));
-    eventSource.on(eventTypes.CHAT_CHANGED, () => void this.onHostChatSwitch('chat_changed'));
-    eventSource.on(eventTypes.CHAT_CREATED, () => void this.onHostChatSwitch('chat_created'));
-    eventSource.on(eventTypes.CHAT_DELETED, () => void this.onHostChatDelete());
-  }
 
   async travelTo(locationId: string, source: TravelSource, force = false): Promise<TravelResult> {
     const state = await this.loadChatState();
@@ -221,20 +205,6 @@ export class AtlasTravelService implements TravelService {
       };
       saveChatMetadataState(repaired);
     }
-  }
-
-  private async onHostChatSwitch(trigger: string): Promise<void> {
-    logInfo(`Chat switch triggered by host: ${trigger}.`);
-    await this.reconcileActiveChatState();
-    const state = await this.loadChatState();
-    this.eventBus.emit('ChatAtlasStateLoaded', { chatState: state });
-  }
-
-  private async onHostChatDelete(): Promise<void> {
-    logInfo('Active chat deleted; resetting in-memory viewer references.');
-    // Active chat metadata is deleted automatically by SillyTavern itself;
-    // nothing to save. We just trigger a cleanup refresh event.
-    this.eventBus.emit('ChatAtlasStateLoaded', { chatState: loadChatMetadataState() });
   }
 
   private showToast(message: string, type: 'warning' | 'info'): void {

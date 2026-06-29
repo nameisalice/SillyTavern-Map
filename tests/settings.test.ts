@@ -23,6 +23,7 @@ describe('mergeDefaults', () => {
       loggingLevel: 'debug',
     });
     expect(result).toEqual({
+      ...DEFAULT_SETTINGS,
       enabled: false,
       openMode: 'fullscreen',
       loggingLevel: 'debug',
@@ -44,21 +45,19 @@ describe('mergeDefaults', () => {
       enabled: true,
       openMode: 'floating',
       loggingLevel: 'info',
-      promptInjectionEnabled: true,
+      somethingObsolete: true,
       allowAdvancedScripts: true,
-    });
+    } as unknown as Record<string, unknown>);
     expect(result).toEqual(DEFAULT_SETTINGS);
     // Unknown keys must not appear on the typed result.
-    expect((result as unknown as Record<string, unknown>).promptInjectionEnabled).toBeUndefined();
+    expect((result as unknown as Record<string, unknown>).somethingObsolete).toBeUndefined();
   });
 
   it('merges partial blobs field by field', () => {
     const result = mergeDefaults({ enabled: false });
     expect(result).toEqual({
+      ...DEFAULT_SETTINGS,
       enabled: false,
-      openMode: DEFAULT_SETTINGS.openMode,
-      loggingLevel: DEFAULT_SETTINGS.loggingLevel,
-      mapIndex: DEFAULT_SETTINGS.mapIndex,
     });
   });
 });

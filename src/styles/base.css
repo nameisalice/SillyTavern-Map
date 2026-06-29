@@ -46,3 +46,46 @@
 .st-atlas__checkbox {
   flex: 0 0 auto;
 }
+
+.st-atlas__input {
+  flex: 1 1 auto;
+  max-width: 6em;
+  text-align: right;
+}
+
+.st-atlas__settings-section-title {
+  font-weight: 600;
+  margin-top: 0.5em;
+  border-bottom: 1px solid var(--SmartThemeBorderColor, #333);
+  padding-bottom: 0.2em;
+}
+
+.st-atlas__settings-row--col {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.st-atlas__settings-preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.25em;
+}
+
+.st-atlas__settings-preview-btn {
+  height: 24px;
+  line-height: normal;
+  padding: 0 0.5em;
+  font-size: 0.85em;
+}
+
+.st-atlas__preview-textarea {
+  width: 100%;
+  font-family: var(--SmartThemeMonoFont, monospace);
+  font-size: 0.85em;
+  resize: vertical;
+  background: var(--SmartThemeInputBg, rgba(0, 0, 0, 0.2));
+  color: var(--SmartThemeBodyColor, #ccc);
+  border: 1px solid var(--SmartThemeBorderColor, #333);
+  border-radius: 4px;
+}

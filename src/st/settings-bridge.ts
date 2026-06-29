@@ -36,6 +36,14 @@ export function mergeDefaults(stored: Record<string, unknown>): AtlasSettings {
     openMode: stored['openMode'],
     loggingLevel: stored['loggingLevel'],
     mapIndex: stored['mapIndex'],
+    promptInjectionEnabled: stored['promptInjectionEnabled'],
+    maxNearbyLocations: stored['maxNearbyLocations'],
+    includeDistances: stored['includeDistances'],
+    includeDangerInfo: stored['includeDangerInfo'],
+    includeRouteRestrictions: stored['includeRouteRestrictions'],
+    contextSizeLimit: stored['contextSizeLimit'],
+    promptPosition: stored['promptPosition'],
+    promptDepth: stored['promptDepth'],
   };
 
   const enabled = typeof known.enabled === 'boolean' ? known.enabled : DEFAULT_SETTINGS.enabled;
@@ -68,7 +76,60 @@ export function mergeDefaults(stored: Record<string, unknown>): AtlasSettings {
       })
     : DEFAULT_SETTINGS.mapIndex;
 
-  return { enabled, openMode, loggingLevel, mapIndex };
+  const promptInjectionEnabled =
+    typeof known.promptInjectionEnabled === 'boolean'
+      ? known.promptInjectionEnabled
+      : DEFAULT_SETTINGS.promptInjectionEnabled;
+
+  const maxNearbyLocations =
+    typeof known.maxNearbyLocations === 'number' && Number.isFinite(known.maxNearbyLocations)
+      ? known.maxNearbyLocations
+      : DEFAULT_SETTINGS.maxNearbyLocations;
+
+  const includeDistances =
+    typeof known.includeDistances === 'boolean'
+      ? known.includeDistances
+      : DEFAULT_SETTINGS.includeDistances;
+
+  const includeDangerInfo =
+    typeof known.includeDangerInfo === 'boolean'
+      ? known.includeDangerInfo
+      : DEFAULT_SETTINGS.includeDangerInfo;
+
+  const includeRouteRestrictions =
+    typeof known.includeRouteRestrictions === 'boolean'
+      ? known.includeRouteRestrictions
+      : DEFAULT_SETTINGS.includeRouteRestrictions;
+
+  const contextSizeLimit =
+    typeof known.contextSizeLimit === 'number' && Number.isFinite(known.contextSizeLimit)
+      ? known.contextSizeLimit
+      : DEFAULT_SETTINGS.contextSizeLimit;
+
+  const promptPosition =
+    typeof known.promptPosition === 'number' && Number.isFinite(known.promptPosition)
+      ? known.promptPosition
+      : DEFAULT_SETTINGS.promptPosition;
+
+  const promptDepth =
+    typeof known.promptDepth === 'number' && Number.isFinite(known.promptDepth)
+      ? known.promptDepth
+      : DEFAULT_SETTINGS.promptDepth;
+
+  return {
+    enabled,
+    openMode,
+    loggingLevel,
+    mapIndex,
+    promptInjectionEnabled,
+    maxNearbyLocations,
+    includeDistances,
+    includeDangerInfo,
+    includeRouteRestrictions,
+    contextSizeLimit,
+    promptPosition,
+    promptDepth,
+  };
 }
 
 /**
@@ -95,6 +156,14 @@ export function saveSettings(next: Partial<AtlasSettings>): void {
     openMode: next.openMode ?? current.openMode,
     loggingLevel: next.loggingLevel ?? current.loggingLevel,
     mapIndex: next.mapIndex ?? current.mapIndex,
+    promptInjectionEnabled: next.promptInjectionEnabled ?? current.promptInjectionEnabled,
+    maxNearbyLocations: next.maxNearbyLocations ?? current.maxNearbyLocations,
+    includeDistances: next.includeDistances ?? current.includeDistances,
+    includeDangerInfo: next.includeDangerInfo ?? current.includeDangerInfo,
+    includeRouteRestrictions: next.includeRouteRestrictions ?? current.includeRouteRestrictions,
+    contextSizeLimit: next.contextSizeLimit ?? current.contextSizeLimit,
+    promptPosition: next.promptPosition ?? current.promptPosition,
+    promptDepth: next.promptDepth ?? current.promptDepth,
   };
 
   context.extensionSettings[SETTINGS_KEY] = updated;

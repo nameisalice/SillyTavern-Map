@@ -45,6 +45,16 @@ interface SillyTavernContext {
     templateId: string,
     templateData?: Record<string, unknown>,
   ) => Promise<string>;
+  /** Inject an extension prompt into the chat context. */
+  readonly setExtensionPrompt: (
+    key: string,
+    value: string,
+    position: number,
+    depth: number,
+    scan?: boolean,
+    role?: number,
+    filter?: unknown,
+  ) => void;
   /** Shows a host popup and resolves when it is dismissed. */
   readonly callGenericPopup: (
     content: HTMLElement | string,
@@ -97,4 +107,19 @@ declare const toastr: {
   readonly success: (message?: string, title?: string) => void;
   readonly warning: (message?: string, title?: string) => void;
   readonly error: (message?: string, title?: string) => void;
+};
+
+/** Host-provided prompt injection positions. */
+declare const extension_prompt_types: {
+  readonly NONE: number;
+  readonly IN_PROMPT: number;
+  readonly IN_CHAT: number;
+  readonly BEFORE_PROMPT: number;
+};
+
+/** Host-provided prompt injection message roles. */
+declare const extension_prompt_roles: {
+  readonly SYSTEM: number;
+  readonly USER: number;
+  readonly ASSISTANT: number;
 };

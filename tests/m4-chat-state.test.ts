@@ -18,6 +18,8 @@ import { SOUTHERN_MARCHES } from '@/examples/southern-marches';
 import { EventBus } from '@/core/events';
 import { CHAT_STATE_KEY } from '@/constants';
 import * as contextBridge from '@/st/context';
+import { ChatStateCoordinator } from '@/app/chat-state-coordinator';
+import { MapSeedingService } from '@/services/map-seeding-service';
 
 interface MockContext {
   chatMetadata: Record<string, unknown>;
@@ -69,6 +71,26 @@ describe('M4 Chat State and Travel Service', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it('ChatStateCoordinator binds host listeners and MapSeedingService seeds map', async () => {
+    // 1. Test coordinator binding
+    const coordinator = new ChatStateCoordinator(travelService, eventBus);
+    coordinator.initialize();
+
+    expect(mockContext.eventSource.on).toHaveBeenCalledWith('app_ready', expect.any(Function));
+    expect(mockContext.eventSource.on).toHaveBeenCalledWith(
+      'chat_id_changed',
+      expect.any(Function),
+    );
+    expect(mockContext.eventSource.on).toHaveBeenCalledWith('chat_created', expect.any(Function));
+    expect(mockContext.eventSource.on).toHaveBeenCalledWith('chat_deleted', expect.any(Function));
+
+    // 2. Test seeding service
+    const seeder = new MapSeedingService(maps);
+    expect(await maps.exists(SOUTHERN_MARCHES.id)).toBe(false);
+    await seeder.seed();
+    expect(await maps.exists(SOUTHERN_MARCHES.id)).toBe(true);
   });
 
   it('missing metadata uses default chat state', async () => {

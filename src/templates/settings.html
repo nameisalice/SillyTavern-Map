@@ -25,5 +25,93 @@
         <option value="debug">Debug</option>
       </select>
     </div>
+
+    <!-- Spatial prompt context section -->
+    <div class="st-atlas__settings-section-title">Spatial Context Injection</div>
+    <div class="st-atlas__settings-row">
+      <label for="st-atlas-prompt-injection" class="st-atlas__settings-label"
+        >Enable context injection</label
+      >
+      <input id="st-atlas-prompt-injection" type="checkbox" class="st-atlas__checkbox" />
+    </div>
+    <div class="st-atlas__settings-row">
+      <label for="st-atlas-max-nearby" class="st-atlas__settings-label">Max nearby locations</label>
+      <input
+        id="st-atlas-max-nearby"
+        type="number"
+        min="0"
+        max="25"
+        class="st-atlas__input text_pole"
+      />
+    </div>
+    <div class="st-atlas__settings-row">
+      <label for="st-atlas-include-distances" class="st-atlas__settings-label"
+        >Include distances/times</label
+      >
+      <input id="st-atlas-include-distances" type="checkbox" class="st-atlas__checkbox" />
+    </div>
+    <div class="st-atlas__settings-row">
+      <label for="st-atlas-include-danger" class="st-atlas__settings-label"
+        >Include danger levels</label
+      >
+      <input id="st-atlas-include-danger" type="checkbox" class="st-atlas__checkbox" />
+    </div>
+    <div class="st-atlas__settings-row">
+      <label for="st-atlas-include-restrictions" class="st-atlas__settings-label"
+        >Include restrictions/locks</label
+      >
+      <input id="st-atlas-include-restrictions" type="checkbox" class="st-atlas__checkbox" />
+    </div>
+    <div class="st-atlas__settings-row">
+      <label for="st-atlas-size-limit" class="st-atlas__settings-label">Context token limit</label>
+      <input
+        id="st-atlas-size-limit"
+        type="number"
+        min="50"
+        max="2000"
+        class="st-atlas__input text_pole"
+      />
+    </div>
+    <div class="st-atlas__settings-row">
+      <label for="st-atlas-prompt-position" class="st-atlas__settings-label"
+        >Injection position</label
+      >
+      <select id="st-atlas-prompt-position" class="st-atlas__select text_pole">
+        <option value="-1">NONE</option>
+        <option value="0">IN_PROMPT (Character note)</option>
+        <option value="1">IN_CHAT (In chat context)</option>
+        <option value="2">BEFORE_PROMPT (System prompt)</option>
+      </select>
+    </div>
+    <div class="st-atlas__settings-row">
+      <label for="st-atlas-prompt-depth" class="st-atlas__settings-label">Injection depth</label>
+      <input
+        id="st-atlas-prompt-depth"
+        type="number"
+        min="0"
+        max="10000"
+        class="st-atlas__input text_pole"
+      />
+    </div>
+
+    <!-- Spatial prompt preview -->
+    <div class="st-atlas__settings-row st-atlas__settings-row--col">
+      <div class="st-atlas__settings-preview-header">
+        <span class="st-atlas__settings-label">Injection Preview</span>
+        <button
+          id="st-atlas-refresh-preview"
+          type="button"
+          class="menu_button st-atlas__settings-preview-btn"
+        >
+          Refresh
+        </button>
+      </div>
+      <textarea
+        id="st-atlas-preview"
+        readonly
+        rows="8"
+        class="st-atlas__preview-textarea text_pole"
+      ></textarea>
+    </div>
   </div>
 </div>

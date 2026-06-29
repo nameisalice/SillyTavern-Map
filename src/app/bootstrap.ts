@@ -45,8 +45,12 @@ import {
   MapLibraryService,
   ThumbnailService,
   AtlasTravelService,
+  MapSeedingService,
   type TravelService,
+  AtlasSpatialContextService,
+  type SpatialContextService,
 } from '@/services';
+import { ChatStateCoordinator } from './chat-state-coordinator';
 
 /**
  * Dependency tokens for the core singletons. Declared here so any
@@ -78,6 +82,12 @@ export const ThumbnailServiceToken: DependencyToken<ThumbnailService> =
   token<ThumbnailService>('ThumbnailService');
 export const TravelServiceToken: DependencyToken<TravelService> =
   token<TravelService>('TravelService');
+export const SpatialContextServiceToken: DependencyToken<SpatialContextService> =
+  token<SpatialContextService>('SpatialContextService');
+export const MapSeedingServiceToken: DependencyToken<MapSeedingService> =
+  token<MapSeedingService>('MapSeedingService');
+export const ChatStateCoordinatorToken: DependencyToken<ChatStateCoordinator> =
+  token<ChatStateCoordinator>('ChatStateCoordinator');
 export const ViewerServiceToken: DependencyToken<ViewerService> =
   token<ViewerService>('ViewerService');
 
@@ -143,6 +153,21 @@ export function getContainer(): Container {
     'singleton',
   );
   container.register(
+    SpatialContextServiceToken,
+    () => new AtlasSpatialContextService(mapRepository, getContainer().resolve(TravelServiceToken)),
+    'singleton',
+  );
+  container.register(
+    MapSeedingServiceToken,
+    () => new MapSeedingService(mapRepository),
+    'singleton',
+  );
+  container.register(
+    ChatStateCoordinatorToken,
+    () => new ChatStateCoordinator(getContainer().resolve(TravelServiceToken), eventBus),
+    'singleton',
+  );
+  container.register(
     ViewerServiceToken,
     () => new AtlasViewerService(eventBus, mapRepository, assetRepository),
     'singleton',
@@ -179,21 +204,35 @@ export async function bootstrap(): Promise<boolean> {
   setTravelService(getContainer().resolve(TravelServiceToken));
 
   // Seed the bundled map into the repository on first run if missing
-  try {
-    const maps = getContainer().resolve(MapRepositoryToken);
-    const { SOUTHERN_MARCHES } = await import('@/examples/southern-marches');
-    if (!(await maps.exists(SOUTHERN_MARCHES.id))) {
-      await maps.save(SOUTHERN_MARCHES);
-      logInfo('Seeded bundled example map into repository.');
-    }
-  } catch (error) {
-    logError('Failed to seed bundled example map.', error);
-  }
+  const seeder = getContainer().resolve(MapSeedingServiceToken);
+  await seeder.seed();
 
-  // Initialize and run the travel/chat state service
-  const travelService = getContainer().resolve(TravelServiceToken) as AtlasTravelService;
-  travelService.initialize();
+  // Initialize and run the travel/chat state coordinator and service
+  const coordinator = getContainer().resolve(ChatStateCoordinatorToken);
+  coordinator.initialize();
+
+  const travelService = getContainer().resolve(TravelServiceToken);
   void travelService.reconcileActiveChatState();
+
+  // Setup prompt rebuild response on state changes
+  const bus = getContainer().resolve(EventBusToken);
+  const contextService = getContainer().resolve(SpatialContextServiceToken);
+
+  bus.subscribe('ChatAtlasStateLoaded', () => {
+    void contextService.rebuildContext();
+  });
+  bus.subscribe('ActiveMapChanged', () => {
+    void contextService.rebuildContext();
+  });
+  bus.subscribe('LocationChanged', () => {
+    void contextService.rebuildContext();
+  });
+  bus.subscribe('DiscoveryChanged', () => {
+    void contextService.rebuildContext();
+  });
+  bus.subscribe('MapSaved', () => {
+    void contextService.rebuildContext();
+  });
 
   await safeMountSettings();
   mountMenuButton();
