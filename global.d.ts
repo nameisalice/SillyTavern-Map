@@ -71,6 +71,26 @@ interface SillyTavernContext {
   };
   /** Whether the host considers the current client mobile. */
   readonly isMobile: () => boolean;
+
+  // Slash commands declarations (Milestone 6)
+  readonly SlashCommandParser: {
+    readonly addCommandObject: (command: unknown) => void;
+  };
+  readonly SlashCommand: {
+    readonly fromProps: (props: Record<string, unknown>) => unknown;
+  };
+  readonly SlashCommandArgument: {
+    readonly fromProps: (props: Record<string, unknown>) => unknown;
+  };
+  readonly SlashCommandNamedArgument: {
+    readonly fromProps: (props: Record<string, unknown>) => unknown;
+  };
+  readonly SlashCommandEnumValue: new (value: string, description?: string | null) => unknown;
+  readonly ARGUMENT_TYPE: {
+    readonly STRING: number;
+    readonly BOOLEAN: number;
+    readonly NUMBER: number;
+  };
 }
 
 /**

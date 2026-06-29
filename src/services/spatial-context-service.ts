@@ -170,13 +170,82 @@ export class AtlasSpatialContextService implements SpatialContextService {
       finalReachable.pop(); // Drop one reachable line to fit budget
     }
 
-    // If still too long, skip description and parent line
-    let prompt = assemblePrompt(heading, mapLine, locLine, [], travelLine, undefined, undefined);
-    if (prompt.length > limit) {
-      logWarn('Compiled spatial context exceeds size limit; truncating text.');
-      prompt = prompt.slice(0, limit); // Hard truncation as last resort
+    // Try showing bare layout first
+    let prompt = assemblePrompt(heading, mapLine, locLine, [], travelLine, descLine, parentLine);
+    if (prompt.length <= limit) {
+      return prompt;
     }
-    return prompt;
+
+    // Prefer truncating description with a clear ellipsis first
+    if (location.description && descLine) {
+      const overhead = assemblePrompt(
+        heading,
+        mapLine,
+        locLine,
+        [],
+        travelLine,
+        'Location description: ',
+        parentLine,
+      ).length;
+      const remaining = limit - overhead;
+      if (remaining > 15) {
+        const truncatedDesc =
+          Array.from(location.description)
+            .slice(0, Math.max(0, remaining - 3))
+            .join('') + '...';
+        const truncatedDescLine = `Location description: ${escapeText(truncatedDesc)}`;
+        prompt = assemblePrompt(
+          heading,
+          mapLine,
+          locLine,
+          [],
+          travelLine,
+          truncatedDescLine,
+          parentLine,
+        );
+        if (prompt.length <= limit) {
+          return prompt;
+        }
+      }
+    }
+
+    // Try without description
+    prompt = assemblePrompt(heading, mapLine, locLine, [], travelLine, undefined, parentLine);
+    if (prompt.length <= limit) {
+      return prompt;
+    }
+
+    // Try without description and parent line
+    prompt = assemblePrompt(heading, mapLine, locLine, [], travelLine, undefined, undefined);
+    if (prompt.length <= limit) {
+      return prompt;
+    }
+
+    // Last resort: line-safe and Unicode-safe hard truncation
+    logWarn('Compiled spatial context exceeds size limit; truncating line-safely.');
+    const lines = prompt.split('\n');
+    const safeLines: string[] = [];
+    let currentLength = 0;
+
+    for (const line of lines) {
+      const lineChars = Array.from(line).length;
+      const addedLen = lineChars + (safeLines.length > 0 ? 1 : 0);
+      if (currentLength + addedLen <= limit) {
+        safeLines.push(line);
+        currentLength += addedLen;
+      } else {
+        if (safeLines.length === 0) {
+          // Unreasonably small limit: do a Unicode-safe crop of the first line
+          const truncatedLine =
+            Array.from(line)
+              .slice(0, Math.max(0, limit - 3))
+              .join('') + '...';
+          safeLines.push(truncatedLine);
+        }
+        break;
+      }
+    }
+    return safeLines.join('\n');
   }
 }
 

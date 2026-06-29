@@ -95,6 +95,11 @@ export function closeAtlasPanel(): void {
   closePanel();
 }
 
+/** Centers the active viewer on the current location. */
+export function centerActiveViewer(): void {
+  viewerController?.centerOnCurrent();
+}
+
 /**
  * Builds the panel DOM from the host-rendered template. Falls back to a
  * vanilla DOM if the template cannot be rendered.

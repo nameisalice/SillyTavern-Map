@@ -150,8 +150,8 @@ describe('M5 Spatial Context Service', () => {
   });
 
   it('enforces character/token limits by dropping sections', async () => {
-    // set small context size limit: 20 tokens (~100 chars)
-    saveSettings({ contextSizeLimit: 20 });
+    // set small context size limit: 30 tokens (~150 chars)
+    saveSettings({ contextSizeLimit: 30 });
 
     mockContext.chatMetadata[CHAT_STATE_KEY] = {
       version: 1,
@@ -165,8 +165,55 @@ describe('M5 Spatial Context Service', () => {
     };
 
     const text = await service.previewContext();
-    expect(text.length).toBeLessThanOrEqual(100);
+    expect(text.length).toBeLessThanOrEqual(150);
     // Continuity rule or nearby locations were dropped to fit budget
+  });
+
+  it('truncates descriptions with an ellipsis and avoids splitting Unicode surrogate pairs', async () => {
+    // Large description containing emoji surrogate pairs
+    const unicodeStory = 'A massive mountain path decorated by ancient runes 🛡️⚔️. Legend says dragons reside here.';
+    const customMap = {
+      ...SOUTHERN_MARCHES,
+      locations: [
+        {
+          ...SOUTHERN_MARCHES.locations[0],
+          id: 'test-loc',
+          name: 'Runes',
+          description: unicodeStory,
+        },
+      ],
+      routes: [],
+      defaultLocationId: 'test-loc',
+    };
+    await maps.save(customMap);
+
+    mockContext.chatMetadata[CHAT_STATE_KEY] = {
+      version: 1,
+      activeMapId: customMap.id,
+      activeLocationId: 'test-loc',
+      discoveredLocationIds: ['test-loc'],
+      discoveredRegionIds: [],
+      bookmarks: [],
+      customMarkers: [],
+      travelHistory: [],
+    };
+
+    // Budget of 60 tokens (~300 chars) which will force description truncation
+    // Basic layout is ~232 chars, full content is ~320 chars.
+    saveSettings({ contextSizeLimit: 60 });
+    const textDesc = await service.previewContext();
+    expect(textDesc).toContain('...');
+    expect(textDesc.length).toBeLessThanOrEqual(300);
+
+    // Extreme budget (e.g. 3 tokens ~ 15 characters) which forces hard head truncation of the first line.
+    // The first line is: "[Atlas Spatial Context]" which is 23 chars. 15 chars budget forces ellipsis truncation of this line.
+    saveSettings({ contextSizeLimit: 3 });
+    const textExtreme = await service.previewContext();
+    expect(textExtreme.length).toBeLessThanOrEqual(15);
+    expect(textExtreme.endsWith('...')).toBe(true);
+
+    // Make sure no surrogate pairs are cut in half (valid javascript string check)
+    expect(isStringCodeValid(textExtreme)).toBe(true);
   });
 
   it('triggers clearSpatialPrompt when spatial injection or Atlas is disabled', async () => {
@@ -226,3 +273,9 @@ describe('M5 Spatial Context Service', () => {
     expect(text1).toBe(text2);
   });
 });
+
+function isStringCodeValid(str: string): boolean {
+  // Checks for unpaired surrogate halves in Javascript
+  const unpairedSurrogate = /[\uD800-\uDBFF][^\uDC00-\uDFFF]|[^\uD800-\uDBFF][\uDC00-\uDFFF]/;
+  return !unpairedSurrogate.test(str);
+}

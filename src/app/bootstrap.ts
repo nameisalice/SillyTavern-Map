@@ -29,6 +29,7 @@ import { openCreateMapDialog, setCreateMapUploadService } from '@/ui/create-map-
 import { logError, logInfo } from '@/core/logger';
 import { EventBus } from '@/core/events';
 import { Container, type DependencyToken, token } from '@/core/container';
+import { registerSlashCommands } from '@/st/slash-command-bridge';
 import { AtlasViewerService, type ViewerService } from '@/services/viewer-service';
 import { LocalForageStorageProvider, type StorageProvider } from '@/providers/storage';
 import {
@@ -232,6 +233,18 @@ export async function bootstrap(): Promise<boolean> {
   });
   bus.subscribe('MapSaved', () => {
     void contextService.rebuildContext();
+  });
+
+  // Register modern SillyTavern slash commands once
+  registerSlashCommands({
+    maps: getContainer().resolve(MapRepositoryToken),
+    travel: travelService,
+    viewer: getContainer().resolve(ViewerServiceToken),
+    library: getContainer().resolve(MapLibraryServiceToken),
+    importer: getContainer().resolve(ImportServiceToken),
+    exporter: getContainer().resolve(ExportServiceToken),
+    eventBus: bus,
+    draftService: getContainer().resolve(MapDraftServiceToken),
   });
 
   await safeMountSettings();
