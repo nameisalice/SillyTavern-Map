@@ -8,6 +8,8 @@
 import type { LogLevel } from '@/core/logger';
 import type { AtlasMapIndexEntry } from '@/domain/map';
 
+export type AtlasProviderMode = 'disabled' | 'sillytavern_current' | 'openai_compatible';
+
 export interface AtlasSettings {
   readonly enabled: boolean;
   readonly openMode: 'floating' | 'fullscreen' | 'docked';
@@ -27,6 +29,19 @@ export interface AtlasSettings {
   // Safe action settings (Milestone 8)
   readonly allowAdvancedScripts: boolean;
   readonly confirmImportedScripts: boolean;
+
+  // Optional AI provider settings
+  readonly textProviderMode: AtlasProviderMode;
+  readonly textProviderBaseUrl: string;
+  readonly textProviderApiKey: string;
+  readonly textProviderModel: string;
+  readonly textProviderTimeoutMs: number;
+  readonly imageProviderMode: AtlasProviderMode;
+  readonly imageProviderBaseUrl: string;
+  readonly imageProviderApiKey: string;
+  readonly imageProviderModel: string;
+  readonly imageProviderResolution: string;
+  readonly imageProviderTimeoutMs: number;
 }
 
 export const DEFAULT_SETTINGS: Readonly<AtlasSettings> = Object.freeze({
@@ -48,4 +63,17 @@ export const DEFAULT_SETTINGS: Readonly<AtlasSettings> = Object.freeze({
   // Advanced imported scripts are disabled unless the user opts in.
   allowAdvancedScripts: false,
   confirmImportedScripts: true,
+
+  // AI providers are optional and disabled by default.
+  textProviderMode: 'disabled',
+  textProviderBaseUrl: '',
+  textProviderApiKey: '',
+  textProviderModel: '',
+  textProviderTimeoutMs: 30000,
+  imageProviderMode: 'disabled',
+  imageProviderBaseUrl: '',
+  imageProviderApiKey: '',
+  imageProviderModel: '',
+  imageProviderResolution: '1024x1024',
+  imageProviderTimeoutMs: 60000,
 });

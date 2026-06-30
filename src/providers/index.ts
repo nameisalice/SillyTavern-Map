@@ -11,3 +11,4 @@ export * from './base';
 export * from './text';
 export * from './image';
 export * from './storage';
+export * from './provider-factory';

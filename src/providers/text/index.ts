@@ -9,3 +9,4 @@ export {
   type BlueprintValidationResult,
 } from './blueprint-validation';
 export { OpenAICompatibleTextProvider } from './openai-compatible-text-provider';
+export { SillyTavernCurrentTextProvider } from './sillytavern-current-text-provider';

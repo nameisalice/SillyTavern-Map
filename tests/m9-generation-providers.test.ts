@@ -127,6 +127,6 @@ describe('M9 generation service', () => {
     const missing = new AtlasGenerationService(new Map());
     await expect(
       missing.generateBlueprint({ concept: 'canals', mapType: 'city', preset }),
-    ).rejects.toThrow(/not configured/);
+    ).rejects.toThrow(/disabled or not configured/);
   });
 });

@@ -13,6 +13,11 @@ import { loadSettings, saveSettings } from '@/st/settings-bridge';
 import { getContext } from '@/st/context';
 import { logError } from '@/infra/logger';
 import { getContainer, SpatialContextServiceToken } from '@/app/bootstrap';
+import {
+  createImageProviderFromSettings,
+  createTextProviderFromSettings,
+} from '@/providers/provider-factory';
+import type { AtlasProviderMode } from '@/types/common/settings';
 
 /**
  * Renders and inserts the settings drawer.
@@ -57,6 +62,31 @@ function wireSettingsControls(root: HTMLElement, settings: AtlasSettingsView): v
   const enabled = root.querySelector<HTMLInputElement>('#st-atlas-enabled');
   const openMode = root.querySelector<HTMLSelectElement>('#st-atlas-open-mode');
   const loggingLevel = root.querySelector<HTMLSelectElement>('#st-atlas-logging-level');
+  const textProviderMode = root.querySelector<HTMLSelectElement>('#st-atlas-text-provider-mode');
+  const textProviderBaseUrl = root.querySelector<HTMLInputElement>(
+    '#st-atlas-text-provider-base-url',
+  );
+  const textProviderApiKey = root.querySelector<HTMLInputElement>('#st-atlas-text-provider-api-key');
+  const textProviderModel = root.querySelector<HTMLInputElement>('#st-atlas-text-provider-model');
+  const textProviderTimeout = root.querySelector<HTMLInputElement>(
+    '#st-atlas-text-provider-timeout',
+  );
+  const testTextProvider = root.querySelector<HTMLButtonElement>('#st-atlas-test-text-provider');
+  const imageProviderMode = root.querySelector<HTMLSelectElement>('#st-atlas-image-provider-mode');
+  const imageProviderBaseUrl = root.querySelector<HTMLInputElement>(
+    '#st-atlas-image-provider-base-url',
+  );
+  const imageProviderApiKey = root.querySelector<HTMLInputElement>(
+    '#st-atlas-image-provider-api-key',
+  );
+  const imageProviderModel = root.querySelector<HTMLInputElement>('#st-atlas-image-provider-model');
+  const imageProviderResolution = root.querySelector<HTMLInputElement>(
+    '#st-atlas-image-provider-resolution',
+  );
+  const imageProviderTimeout = root.querySelector<HTMLInputElement>(
+    '#st-atlas-image-provider-timeout',
+  );
+  const testImageProvider = root.querySelector<HTMLButtonElement>('#st-atlas-test-image-provider');
 
   // M5 Spatial prompt controls
   const promptInjection = root.querySelector<HTMLInputElement>('#st-atlas-prompt-injection');
@@ -94,6 +124,99 @@ function wireSettingsControls(root: HTMLElement, settings: AtlasSettingsView): v
       void triggerChange({
         loggingLevel: loggingLevel.value as 'error' | 'warn' | 'info' | 'debug',
       });
+    });
+  }
+
+  if (textProviderMode) {
+    textProviderMode.value = settings.textProviderMode;
+    textProviderMode.addEventListener('change', () => {
+      const mode = textProviderMode.value as AtlasProviderMode;
+      updateProviderFieldVisibility(root);
+      void triggerChange({ textProviderMode: mode });
+    });
+  }
+
+  if (textProviderBaseUrl) {
+    textProviderBaseUrl.value = settings.textProviderBaseUrl;
+    textProviderBaseUrl.addEventListener('change', () => {
+      void triggerChange({ textProviderBaseUrl: textProviderBaseUrl.value.trim() });
+    });
+  }
+
+  if (textProviderApiKey) {
+    textProviderApiKey.value = settings.textProviderApiKey;
+    textProviderApiKey.addEventListener('change', () => {
+      void triggerChange({ textProviderApiKey: textProviderApiKey.value });
+    });
+  }
+
+  if (textProviderModel) {
+    textProviderModel.value = settings.textProviderModel;
+    textProviderModel.addEventListener('change', () => {
+      void triggerChange({ textProviderModel: textProviderModel.value.trim() });
+    });
+  }
+
+  if (textProviderTimeout) {
+    textProviderTimeout.value = String(settings.textProviderTimeoutMs);
+    textProviderTimeout.addEventListener('change', () => {
+      void triggerChange({ textProviderTimeoutMs: Number(textProviderTimeout.value) });
+    });
+  }
+
+  if (testTextProvider) {
+    testTextProvider.addEventListener('click', () => {
+      void testActiveTextProvider();
+    });
+  }
+
+  if (imageProviderMode) {
+    imageProviderMode.value = settings.imageProviderMode;
+    imageProviderMode.addEventListener('change', () => {
+      const mode = imageProviderMode.value as AtlasProviderMode;
+      updateProviderFieldVisibility(root);
+      void triggerChange({ imageProviderMode: mode });
+    });
+  }
+
+  if (imageProviderBaseUrl) {
+    imageProviderBaseUrl.value = settings.imageProviderBaseUrl;
+    imageProviderBaseUrl.addEventListener('change', () => {
+      void triggerChange({ imageProviderBaseUrl: imageProviderBaseUrl.value.trim() });
+    });
+  }
+
+  if (imageProviderApiKey) {
+    imageProviderApiKey.value = settings.imageProviderApiKey;
+    imageProviderApiKey.addEventListener('change', () => {
+      void triggerChange({ imageProviderApiKey: imageProviderApiKey.value });
+    });
+  }
+
+  if (imageProviderModel) {
+    imageProviderModel.value = settings.imageProviderModel;
+    imageProviderModel.addEventListener('change', () => {
+      void triggerChange({ imageProviderModel: imageProviderModel.value.trim() });
+    });
+  }
+
+  if (imageProviderResolution) {
+    imageProviderResolution.value = settings.imageProviderResolution;
+    imageProviderResolution.addEventListener('change', () => {
+      void triggerChange({ imageProviderResolution: imageProviderResolution.value.trim() });
+    });
+  }
+
+  if (imageProviderTimeout) {
+    imageProviderTimeout.value = String(settings.imageProviderTimeoutMs);
+    imageProviderTimeout.addEventListener('change', () => {
+      void triggerChange({ imageProviderTimeoutMs: Number(imageProviderTimeout.value) });
+    });
+  }
+
+  if (testImageProvider) {
+    testImageProvider.addEventListener('click', () => {
+      void testActiveImageProvider();
     });
   }
 
@@ -158,6 +281,47 @@ function wireSettingsControls(root: HTMLElement, settings: AtlasSettingsView): v
       void updatePreview(root);
     });
   }
+
+  updateProviderFieldVisibility(root);
+}
+
+export function updateProviderFieldVisibility(root: HTMLElement): void {
+  const textMode = root.querySelector<HTMLSelectElement>('#st-atlas-text-provider-mode');
+  const imageMode = root.querySelector<HTMLSelectElement>('#st-atlas-image-provider-mode');
+  const textFields = root.querySelector<HTMLElement>('[data-st-atlas-provider-fields="text"]');
+  const imageFields = root.querySelector<HTMLElement>('[data-st-atlas-provider-fields="image"]');
+
+  if (textFields) {
+    textFields.hidden = textMode?.value !== 'openai_compatible';
+  }
+  if (imageFields) {
+    imageFields.hidden = imageMode?.value !== 'openai_compatible';
+  }
+}
+
+async function testActiveTextProvider(): Promise<void> {
+  const provider = createTextProviderFromSettings(loadSettings());
+  if (!provider) {
+    await showProviderResult('Text provider is disabled.');
+    return;
+  }
+  const result = await provider.testConnection();
+  await showProviderResult(result.message);
+}
+
+async function testActiveImageProvider(): Promise<void> {
+  const provider = createImageProviderFromSettings(loadSettings());
+  if (!provider) {
+    await showProviderResult('Image provider is disabled.');
+    return;
+  }
+  const result = await provider.testConnection();
+  await showProviderResult(result.message);
+}
+
+async function showProviderResult(message: string): Promise<void> {
+  const context = getContext();
+  await context.callGenericPopup(message, context.POPUP_TYPE.TEXT);
 }
 
 /** Updates the spatial context preview textbox. */
@@ -189,4 +353,15 @@ interface AtlasSettingsView {
   contextSizeLimit: number;
   promptPosition: number;
   promptDepth: number;
+  textProviderMode: AtlasProviderMode;
+  textProviderBaseUrl: string;
+  textProviderApiKey: string;
+  textProviderModel: string;
+  textProviderTimeoutMs: number;
+  imageProviderMode: AtlasProviderMode;
+  imageProviderBaseUrl: string;
+  imageProviderApiKey: string;
+  imageProviderModel: string;
+  imageProviderResolution: string;
+  imageProviderTimeoutMs: number;
 }

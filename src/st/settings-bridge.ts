@@ -46,6 +46,17 @@ export function mergeDefaults(stored: Record<string, unknown>): AtlasSettings {
     promptDepth: stored['promptDepth'],
     allowAdvancedScripts: stored['allowAdvancedScripts'],
     confirmImportedScripts: stored['confirmImportedScripts'],
+    textProviderMode: stored['textProviderMode'],
+    textProviderBaseUrl: stored['textProviderBaseUrl'],
+    textProviderApiKey: stored['textProviderApiKey'],
+    textProviderModel: stored['textProviderModel'],
+    textProviderTimeoutMs: stored['textProviderTimeoutMs'],
+    imageProviderMode: stored['imageProviderMode'],
+    imageProviderBaseUrl: stored['imageProviderBaseUrl'],
+    imageProviderApiKey: stored['imageProviderApiKey'],
+    imageProviderModel: stored['imageProviderModel'],
+    imageProviderResolution: stored['imageProviderResolution'],
+    imageProviderTimeoutMs: stored['imageProviderTimeoutMs'],
   };
 
   const enabled = typeof known.enabled === 'boolean' ? known.enabled : DEFAULT_SETTINGS.enabled;
@@ -128,6 +139,51 @@ export function mergeDefaults(stored: Record<string, unknown>): AtlasSettings {
       ? known.confirmImportedScripts
       : DEFAULT_SETTINGS.confirmImportedScripts;
 
+  const textProviderMode = providerModeOrDefault(
+    known.textProviderMode,
+    DEFAULT_SETTINGS.textProviderMode,
+  );
+  const imageProviderMode = providerModeOrDefault(
+    known.imageProviderMode,
+    DEFAULT_SETTINGS.imageProviderMode,
+  );
+  const textProviderBaseUrl = stringOrDefault(
+    known.textProviderBaseUrl,
+    DEFAULT_SETTINGS.textProviderBaseUrl,
+  );
+  const textProviderApiKey = stringOrDefault(
+    known.textProviderApiKey,
+    DEFAULT_SETTINGS.textProviderApiKey,
+  );
+  const textProviderModel = stringOrDefault(
+    known.textProviderModel,
+    DEFAULT_SETTINGS.textProviderModel,
+  );
+  const textProviderTimeoutMs = positiveNumberOrDefault(
+    known.textProviderTimeoutMs,
+    DEFAULT_SETTINGS.textProviderTimeoutMs,
+  );
+  const imageProviderBaseUrl = stringOrDefault(
+    known.imageProviderBaseUrl,
+    DEFAULT_SETTINGS.imageProviderBaseUrl,
+  );
+  const imageProviderApiKey = stringOrDefault(
+    known.imageProviderApiKey,
+    DEFAULT_SETTINGS.imageProviderApiKey,
+  );
+  const imageProviderModel = stringOrDefault(
+    known.imageProviderModel,
+    DEFAULT_SETTINGS.imageProviderModel,
+  );
+  const imageProviderResolution = stringOrDefault(
+    known.imageProviderResolution,
+    DEFAULT_SETTINGS.imageProviderResolution,
+  );
+  const imageProviderTimeoutMs = positiveNumberOrDefault(
+    known.imageProviderTimeoutMs,
+    DEFAULT_SETTINGS.imageProviderTimeoutMs,
+  );
+
   return {
     enabled,
     openMode,
@@ -143,6 +199,17 @@ export function mergeDefaults(stored: Record<string, unknown>): AtlasSettings {
     promptDepth,
     allowAdvancedScripts,
     confirmImportedScripts,
+    textProviderMode,
+    textProviderBaseUrl,
+    textProviderApiKey,
+    textProviderModel,
+    textProviderTimeoutMs,
+    imageProviderMode,
+    imageProviderBaseUrl,
+    imageProviderApiKey,
+    imageProviderModel,
+    imageProviderResolution,
+    imageProviderTimeoutMs,
   };
 }
 
@@ -180,6 +247,17 @@ export function saveSettings(next: Partial<AtlasSettings>): void {
     promptDepth: next.promptDepth ?? current.promptDepth,
     allowAdvancedScripts: next.allowAdvancedScripts ?? current.allowAdvancedScripts,
     confirmImportedScripts: next.confirmImportedScripts ?? current.confirmImportedScripts,
+    textProviderMode: next.textProviderMode ?? current.textProviderMode,
+    textProviderBaseUrl: next.textProviderBaseUrl ?? current.textProviderBaseUrl,
+    textProviderApiKey: next.textProviderApiKey ?? current.textProviderApiKey,
+    textProviderModel: next.textProviderModel ?? current.textProviderModel,
+    textProviderTimeoutMs: next.textProviderTimeoutMs ?? current.textProviderTimeoutMs,
+    imageProviderMode: next.imageProviderMode ?? current.imageProviderMode,
+    imageProviderBaseUrl: next.imageProviderBaseUrl ?? current.imageProviderBaseUrl,
+    imageProviderApiKey: next.imageProviderApiKey ?? current.imageProviderApiKey,
+    imageProviderModel: next.imageProviderModel ?? current.imageProviderModel,
+    imageProviderResolution: next.imageProviderResolution ?? current.imageProviderResolution,
+    imageProviderTimeoutMs: next.imageProviderTimeoutMs ?? current.imageProviderTimeoutMs,
   };
 
   context.extensionSettings[SETTINGS_KEY] = updated;
@@ -190,4 +268,21 @@ export function saveSettings(next: Partial<AtlasSettings>): void {
 /** Stores the lightweight map index in extension settings. */
 export function saveMapIndex(mapIndex: AtlasSettings['mapIndex']): void {
   saveSettings({ mapIndex });
+}
+
+function providerModeOrDefault(
+  value: unknown,
+  fallback: AtlasSettings['textProviderMode'],
+): AtlasSettings['textProviderMode'] {
+  return value === 'disabled' || value === 'sillytavern_current' || value === 'openai_compatible'
+    ? value
+    : fallback;
+}
+
+function stringOrDefault(value: unknown, fallback: string): string {
+  return typeof value === 'string' ? value : fallback;
+}
+
+function positiveNumberOrDefault(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : fallback;
 }

@@ -272,6 +272,7 @@ export async function bootstrap(): Promise<boolean> {
   await safeMountSettings();
   mountMenuButton();
   mountLibraryButton();
+  mountFloatingLauncher();
 
   logInfo('Atlas bootstrap complete.');
   return true;
@@ -314,6 +315,25 @@ function mountLibraryButton(): void {
     menu.append(button);
   } catch (error) {
     logError('Atlas library button failed to mount.', error);
+  }
+}
+
+function mountFloatingLauncher(): void {
+  try {
+    if (document.querySelector('[data-st-atlas="floating-launcher"]')) {
+      return;
+    }
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'st-atlas__floating-launcher';
+    button.setAttribute('data-st-atlas', 'floating-launcher');
+    button.setAttribute('aria-label', 'Open Atlas');
+    button.title = 'Open Atlas';
+    button.innerHTML = '<i class="fa-solid fa-map-location-dot" aria-hidden="true"></i>';
+    button.addEventListener('click', () => openAtlasPanel());
+    document.body.append(button);
+  } catch (error) {
+    logError('Atlas floating launcher failed to mount.', error);
   }
 }
 

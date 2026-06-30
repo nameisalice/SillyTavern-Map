@@ -26,6 +26,102 @@
       </select>
     </div>
 
+    <!-- AI provider section -->
+    <div class="st-atlas__settings-section-title">AI Providers</div>
+    <div class="st-atlas__settings-row">
+      <label for="st-atlas-text-provider-mode" class="st-atlas__settings-label">Text provider</label>
+      <select id="st-atlas-text-provider-mode" class="st-atlas__select text_pole">
+        <option value="disabled">Disabled</option>
+        <option value="sillytavern_current">Use current SillyTavern connection</option>
+        <option value="openai_compatible">Custom OpenAI-compatible API</option>
+      </select>
+    </div>
+    <div class="st-atlas__provider-fields" data-st-atlas-provider-fields="text">
+      <div class="st-atlas__settings-row">
+        <label for="st-atlas-text-provider-base-url" class="st-atlas__settings-label">Text Base URL</label>
+        <input id="st-atlas-text-provider-base-url" type="url" class="st-atlas__select text_pole" />
+      </div>
+      <div class="st-atlas__settings-row">
+        <label for="st-atlas-text-provider-model" class="st-atlas__settings-label">Text model</label>
+        <input id="st-atlas-text-provider-model" type="text" class="st-atlas__select text_pole" />
+      </div>
+      <div class="st-atlas__settings-row">
+        <label for="st-atlas-text-provider-api-key" class="st-atlas__settings-label">Text API key</label>
+        <input
+          id="st-atlas-text-provider-api-key"
+          type="password"
+          autocomplete="off"
+          class="st-atlas__select text_pole"
+        />
+      </div>
+      <div class="st-atlas__settings-row">
+        <label for="st-atlas-text-provider-timeout" class="st-atlas__settings-label">Text timeout ms</label>
+        <input
+          id="st-atlas-text-provider-timeout"
+          type="number"
+          min="1000"
+          max="300000"
+          class="st-atlas__input text_pole"
+        />
+      </div>
+    </div>
+    <div class="st-atlas__settings-row">
+      <button id="st-atlas-test-text-provider" type="button" class="menu_button">
+        Test Text Provider
+      </button>
+    </div>
+
+    <div class="st-atlas__settings-row">
+      <label for="st-atlas-image-provider-mode" class="st-atlas__settings-label">Image provider</label>
+      <select id="st-atlas-image-provider-mode" class="st-atlas__select text_pole">
+        <option value="disabled">Disabled</option>
+        <option value="sillytavern_current">Use SillyTavern image generation</option>
+        <option value="openai_compatible">Custom OpenAI-compatible Image API</option>
+      </select>
+    </div>
+    <div class="st-atlas__provider-fields" data-st-atlas-provider-fields="image">
+      <div class="st-atlas__settings-row">
+        <label for="st-atlas-image-provider-base-url" class="st-atlas__settings-label">Image Base URL</label>
+        <input id="st-atlas-image-provider-base-url" type="url" class="st-atlas__select text_pole" />
+      </div>
+      <div class="st-atlas__settings-row">
+        <label for="st-atlas-image-provider-model" class="st-atlas__settings-label">Image model</label>
+        <input id="st-atlas-image-provider-model" type="text" class="st-atlas__select text_pole" />
+      </div>
+      <div class="st-atlas__settings-row">
+        <label for="st-atlas-image-provider-api-key" class="st-atlas__settings-label">Image API key</label>
+        <input
+          id="st-atlas-image-provider-api-key"
+          type="password"
+          autocomplete="off"
+          class="st-atlas__select text_pole"
+        />
+      </div>
+      <div class="st-atlas__settings-row">
+        <label for="st-atlas-image-provider-resolution" class="st-atlas__settings-label">Image resolution</label>
+        <input
+          id="st-atlas-image-provider-resolution"
+          type="text"
+          class="st-atlas__select text_pole"
+        />
+      </div>
+      <div class="st-atlas__settings-row">
+        <label for="st-atlas-image-provider-timeout" class="st-atlas__settings-label">Image timeout ms</label>
+        <input
+          id="st-atlas-image-provider-timeout"
+          type="number"
+          min="1000"
+          max="600000"
+          class="st-atlas__input text_pole"
+        />
+      </div>
+    </div>
+    <div class="st-atlas__settings-row">
+      <button id="st-atlas-test-image-provider" type="button" class="menu_button">
+        Test Image Provider
+      </button>
+    </div>
+
     <!-- Spatial prompt context section -->
     <div class="st-atlas__settings-section-title">Spatial Context Injection</div>
     <div class="st-atlas__settings-row">

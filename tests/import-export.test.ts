@@ -52,4 +52,24 @@ describe('import/export', () => {
       /already exists/,
     );
   });
+
+  it('does not include provider API keys in exported map packages', async () => {
+    const storage = new MemoryStorageProvider();
+    const maps = new MapRepository(storage);
+    const assets = new AssetRepository(storage);
+    await assets.saveAsset({
+      id: SOUTHERN_MARCHES.image.assetId,
+      kind: 'image',
+      mime: SOUTHERN_MARCHES.image.mimeType,
+      data: new Uint8Array([1, 2, 3]),
+    });
+    await maps.save(SOUTHERN_MARCHES);
+
+    const exported = await new ExportService(maps, assets).exportMapJson(SOUTHERN_MARCHES.id);
+
+    expect(exported).not.toContain('textProviderApiKey');
+    expect(exported).not.toContain('imageProviderApiKey');
+    expect(exported).not.toContain('secret-text');
+    expect(exported).not.toContain('secret-image');
+  });
 });

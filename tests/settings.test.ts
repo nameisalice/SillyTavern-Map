@@ -69,4 +69,42 @@ describe('mergeDefaults', () => {
     expect(result.allowAdvancedScripts).toBe(true);
     expect(result.confirmImportedScripts).toBe(false);
   });
+
+  it('defaults AI providers to disabled and preserves valid custom values', () => {
+    const defaults = mergeDefaults({});
+    expect(defaults.textProviderMode).toBe('disabled');
+    expect(defaults.imageProviderMode).toBe('disabled');
+
+    const result = mergeDefaults({
+      textProviderMode: 'openai_compatible',
+      textProviderBaseUrl: 'https://example.test/v1',
+      textProviderApiKey: 'secret-text',
+      textProviderModel: 'text-model',
+      textProviderTimeoutMs: 45000,
+      imageProviderMode: 'sillytavern_current',
+      imageProviderResolution: '1536x1024',
+    });
+
+    expect(result.textProviderMode).toBe('openai_compatible');
+    expect(result.textProviderBaseUrl).toBe('https://example.test/v1');
+    expect(result.textProviderApiKey).toBe('secret-text');
+    expect(result.textProviderModel).toBe('text-model');
+    expect(result.textProviderTimeoutMs).toBe(45000);
+    expect(result.imageProviderMode).toBe('sillytavern_current');
+    expect(result.imageProviderResolution).toBe('1536x1024');
+  });
+
+  it('falls back for invalid AI provider settings', () => {
+    const result = mergeDefaults({
+      textProviderMode: 'bad',
+      textProviderTimeoutMs: -1,
+      imageProviderMode: 'bad',
+      imageProviderTimeoutMs: 0,
+    });
+
+    expect(result.textProviderMode).toBe(DEFAULT_SETTINGS.textProviderMode);
+    expect(result.textProviderTimeoutMs).toBe(DEFAULT_SETTINGS.textProviderTimeoutMs);
+    expect(result.imageProviderMode).toBe(DEFAULT_SETTINGS.imageProviderMode);
+    expect(result.imageProviderTimeoutMs).toBe(DEFAULT_SETTINGS.imageProviderTimeoutMs);
+  });
 });
