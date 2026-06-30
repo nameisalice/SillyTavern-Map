@@ -18,6 +18,7 @@ export interface LibraryActions {
   readonly openInViewer: (mapId: string) => void;
   readonly openInEditor: (mapId: string) => void;
   readonly createMap: () => void;
+  readonly generateMap: () => void;
 }
 
 /** A dialog/popup helper injected by the host. */
@@ -53,6 +54,9 @@ export async function openMapLibrary(
   root
     .querySelector<HTMLElement>('[data-st-atlas-library-action="create"]')
     ?.addEventListener('click', () => actions.createMap());
+  root
+    .querySelector<HTMLElement>('[data-st-atlas-library-action="generate"]')
+    ?.addEventListener('click', () => actions.generateMap());
 
   const context = getContext();
   await context.callGenericPopup(root, context.POPUP_TYPE.TEXT);
@@ -148,7 +152,12 @@ function buildFallback(root: HTMLElement): void {
   create.className = 'st-atlas__library-btn menu_button menu_button_icon';
   create.setAttribute('data-st-atlas-library-action', 'create');
   create.innerHTML = '<i class="fa-solid fa-plus"></i><span>Create Map</span>';
-  header.append(title, create);
+  const generate = document.createElement('button');
+  generate.type = 'button';
+  generate.className = 'st-atlas__library-btn menu_button menu_button_icon';
+  generate.setAttribute('data-st-atlas-library-action', 'generate');
+  generate.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i><span>Generate Map</span>';
+  header.append(title, create, generate);
 
   const list = document.createElement('ul');
   list.className = 'st-atlas__library-list';

@@ -37,6 +37,7 @@ let libraryActions: PanelLibraryActions | null = null;
 interface PanelLibraryActions {
   readonly openLibrary: () => void;
   readonly createMap: () => void;
+  readonly generateMap: () => void;
 }
 
 /**
@@ -241,7 +242,14 @@ function buildFallbackPanel(root: HTMLElement): void {
   create.setAttribute('aria-label', 'Create map');
   create.title = 'Create map';
   create.innerHTML = '<i class="fa-solid fa-plus"></i>';
-  toolbar.append(library, create);
+  const generate = document.createElement('button');
+  generate.type = 'button';
+  generate.className = 'st-atlas__toolbar-btn menu_button menu_button_icon';
+  generate.setAttribute('data-st-atlas-panel-action', 'generate');
+  generate.setAttribute('aria-label', 'Generate map with AI');
+  generate.title = 'Generate map with AI';
+  generate.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i>';
+  toolbar.append(library, create, generate);
 
   header.append(title, toolbar, close);
 
@@ -271,6 +279,9 @@ function wirePanelControls(root: HTMLElement): void {
   root
     .querySelector<HTMLElement>('[data-st-atlas-panel-action="create"]')
     ?.addEventListener('click', () => libraryActions?.createMap());
+  root
+    .querySelector<HTMLElement>('[data-st-atlas-panel-action="generate"]')
+    ?.addEventListener('click', () => libraryActions?.generateMap());
 }
 
 /**

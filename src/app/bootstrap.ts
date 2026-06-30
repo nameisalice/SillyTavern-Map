@@ -32,6 +32,7 @@ import {
 import { openMapLibrary } from '@/ui/map-library-controller';
 import { openEditor } from '@/ui/editor-dialog-controller';
 import { openCreateMapDialog, setCreateMapUploadService } from '@/ui/create-map-controller';
+import { openGenerateMapDialog } from '@/ui/generate-map-controller';
 import { logError, logInfo } from '@/core/logger';
 import { EventBus } from '@/core/events';
 import { Container, type DependencyToken, token } from '@/core/container';
@@ -242,6 +243,13 @@ export async function bootstrap(): Promise<boolean> {
         getContainer().resolve(ViewerServiceToken),
         getContainer().resolve(EventBusToken),
       ),
+    generateMap: () =>
+      void openGenerateMapFlow(
+        getContainer().resolve(MapDraftServiceToken),
+        getContainer().resolve(ImageUploadServiceToken),
+        getContainer().resolve(ViewerServiceToken),
+        getContainer().resolve(EventBusToken),
+      ),
   });
 
   // Seed the bundled map into the repository on first run if missing
@@ -285,6 +293,7 @@ export async function bootstrap(): Promise<boolean> {
     exporter: getContainer().resolve(ExportServiceToken),
     eventBus: bus,
     draftService: getContainer().resolve(MapDraftServiceToken),
+    uploadService: getContainer().resolve(ImageUploadServiceToken),
   });
 
   await safeMountSettings();
@@ -531,6 +540,13 @@ async function openLibraryFlow(): Promise<void> {
         openInEditor: (mapId) =>
           void openMapInEditorMode(mapId, viewerService, draftService, eventBus),
         createMap: () => void openCreateMapFlow(draftService, viewerService, eventBus),
+        generateMap: () =>
+          void openGenerateMapFlow(
+            draftService,
+            c.resolve(ImageUploadServiceToken),
+            viewerService,
+            eventBus,
+          ),
       },
       async (content, type) => {
         const ctx = tryGetContext();
@@ -608,6 +624,33 @@ async function openCreateMapFlow(
     });
   } catch (error) {
     logError('Create map flow failed.', error);
+  }
+}
+
+/** Opens the AI Generate Map workflow. */
+async function openGenerateMapFlow(
+  draftService: MapDraftService,
+  uploadService: ImageUploadService,
+  viewerService: ViewerService,
+  eventBus: EventBus,
+): Promise<void> {
+  try {
+    const result = await openGenerateMapDialog({ draftService, uploadService });
+    if (!result) {
+      return;
+    }
+    await openEditor({
+      document: result.document,
+      imageUrlOverride: result.imageUrl,
+      draftService,
+      viewerService,
+      eventBus,
+      onSaved: (saved) => {
+        eventBus.emit('MapSaved', { mapId: saved.id });
+      },
+    });
+  } catch (error) {
+    logError('Generate map flow failed.', error);
   }
 }
 

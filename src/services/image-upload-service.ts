@@ -35,6 +35,15 @@ export interface UploadedImage {
   readonly checksum: string;
 }
 
+/** Input for storing image bytes returned by an AI image provider. */
+export interface GeneratedImageUploadInput {
+  readonly name: string;
+  readonly data: Uint8Array;
+  readonly mimeType: MapImageMimeType;
+  readonly width?: number;
+  readonly height?: number;
+}
+
 export class ImageUploadService {
   constructor(private readonly assets: AssetRepository) {}
 
@@ -82,6 +91,45 @@ export class ImageUploadService {
     };
   }
 
+  /** Stores provider-generated image bytes as a normal Atlas image asset. */
+  async saveGeneratedImage(input: GeneratedImageUploadInput): Promise<UploadedImage> {
+    if (input.data.byteLength <= 0) {
+      throw new Error('The generated image is empty.');
+    }
+    if (input.data.byteLength > MAX_IMAGE_SIZE_BYTES) {
+      throw new Error('The generated image is larger than 20 MB.');
+    }
+    if (!ACCEPTED_IMAGE_MIME_TYPES.includes(input.mimeType)) {
+      throw new Error('Generated image type is unsupported. Use PNG, JPEG, or WebP.');
+    }
+
+    const dimensions =
+      input.width && input.height
+        ? { width: input.width, height: input.height }
+        : await decodeDimensions(input.data, input.mimeType).catch(() => null);
+    if (!dimensions) {
+      throw new Error('The generated image could not be decoded.');
+    }
+    if (dimensions.width <= 0 || dimensions.height <= 0) {
+      throw new Error('The generated image has no dimensions.');
+    }
+
+    const assetId = await generateAssetId(`${input.name}.${extensionForMime(input.mimeType)}`);
+    const metadata = await this.assets.saveAsset({
+      id: assetId,
+      kind: 'image',
+      mime: input.mimeType,
+      data: input.data,
+    });
+    return {
+      assetId: metadata.id,
+      width: dimensions.width,
+      height: dimensions.height,
+      mimeType: input.mimeType,
+      checksum: metadata.checksum,
+    };
+  }
+
   /** Loads an asset's bytes + metadata, or null. */
   async loadAsset(
     assetId: string,
@@ -112,6 +160,20 @@ function normalizeMime(raw: string): MapImageMimeType {
       return 'image/svg+xml';
     default:
       return 'image/png';
+  }
+}
+
+function extensionForMime(mime: MapImageMimeType): string {
+  switch (mime) {
+    case 'image/jpeg':
+      return 'jpg';
+    case 'image/webp':
+      return 'webp';
+    case 'image/svg+xml':
+      return 'svg';
+    case 'image/png':
+    default:
+      return 'png';
   }
 }
 

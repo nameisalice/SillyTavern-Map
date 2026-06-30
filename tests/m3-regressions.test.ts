@@ -42,6 +42,25 @@ describe('M3 Fixes Regressions', () => {
     expect(await assets.exists(assetId)).toBe(false);
   });
 
+  it('ImageUploadService stores generated provider image bytes', async () => {
+    const storage = new MemoryStorageProvider();
+    const assets = new AssetRepository(storage);
+    const service = new ImageUploadService(assets);
+
+    const uploaded = await service.saveGeneratedImage({
+      name: 'Generated Region',
+      data: new Uint8Array([1, 2, 3, 4]),
+      mimeType: 'image/png',
+      width: 64,
+      height: 64,
+    });
+
+    expect(uploaded.assetId).toMatch(/^generated-region-/);
+    const stored = await assets.loadAsset(uploaded.assetId);
+    expect(stored?.metadata.mime).toBe('image/png');
+    expect([...(stored?.data ?? [])]).toEqual([1, 2, 3, 4]);
+  });
+
   it('EditorController triggers onExit on successful exit', async () => {
     const storage = new MemoryStorageProvider();
     const assets = new AssetRepository(storage);

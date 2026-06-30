@@ -19,6 +19,7 @@ import type {
   ImportService,
   ExportService,
   MapDraftService,
+  ImageUploadService,
 } from '@/services';
 import type { EventBus } from '@/core/events';
 import type { AtlasMapDocument } from '@/domain/map';
@@ -28,6 +29,7 @@ import { openAtlasPanel, centerActiveViewer } from '@/ui/panel-controller';
 import { openEditor } from '@/ui/editor-dialog-controller';
 import { openMapLibrary } from '@/ui/map-library-controller';
 import { openCreateMapDialog } from '@/ui/create-map-controller';
+import { openGenerateMapDialog } from '@/ui/generate-map-controller';
 
 let commandsRegistered = false;
 
@@ -49,6 +51,7 @@ export function registerSlashCommands(args: {
   exporter: ExportService;
   eventBus: EventBus;
   draftService: MapDraftService;
+  uploadService: ImageUploadService;
 }): void {
   if (commandsRegistered) {
     return;
@@ -649,6 +652,7 @@ async function openLibraryFlowWrapper(args: {
   exporter: ExportService;
   eventBus: EventBus;
   draftService: MapDraftService;
+  uploadService: ImageUploadService;
   travel: TravelService;
 }): Promise<void> {
   const travelService = args.travel;
@@ -701,6 +705,27 @@ async function openLibraryFlowWrapper(args: {
           });
         } catch (err) {
           logError('Library Create Map trigger failed.', err);
+        }
+      },
+      generateMap: async () => {
+        try {
+          const result = await openGenerateMapDialog({
+            draftService,
+            uploadService: args.uploadService,
+          });
+          if (!result) return;
+          await openEditor({
+            document: result.document,
+            imageUrlOverride: result.imageUrl,
+            draftService,
+            viewerService,
+            eventBus,
+            onSaved: (saved) => {
+              eventBus.emit('MapSaved', { mapId: saved.id });
+            },
+          });
+        } catch (err) {
+          logError('Library Generate Map trigger failed.', err);
         }
       },
     },

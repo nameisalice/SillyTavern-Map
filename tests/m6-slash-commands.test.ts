@@ -24,7 +24,7 @@ import { AtlasTravelService } from '@/services/travel-service';
 import { AtlasViewerService } from '@/services/viewer-service';
 import { MapLibraryService } from '@/services/map-library-service';
 import type { ViewerStateRepository } from '@/repositories';
-import type { MapDraftService } from '@/services';
+import type { ImageUploadService, MapDraftService } from '@/services';
 import { ImportService } from '@/services/import-service';
 import { ExportService } from '@/services/export-service';
 import { EventBus } from '@/core/events';
@@ -224,6 +224,7 @@ describe('M6 Slash Commands', () => {
       exporter,
       eventBus,
       draftService: null as unknown as MapDraftService,
+      uploadService: null as unknown as ImageUploadService,
     });
 
     expect(registeredCommands.size).toBe(12);
@@ -251,6 +252,7 @@ describe('M6 Slash Commands', () => {
       exporter,
       eventBus,
       draftService: null as unknown as MapDraftService,
+      uploadService: null as unknown as ImageUploadService,
     });
 
     const atlasMapCmd = registeredCommands.get('atlas-map')!;
@@ -289,6 +291,7 @@ describe('M6 Slash Commands', () => {
       exporter,
       eventBus,
       draftService: null as unknown as MapDraftService,
+      uploadService: null as unknown as ImageUploadService,
     });
 
     mockContext.chatMetadata[CHAT_STATE_KEY] = {
@@ -325,6 +328,7 @@ describe('M6 Slash Commands', () => {
       exporter,
       eventBus,
       draftService: null as unknown as MapDraftService,
+      uploadService: null as unknown as ImageUploadService,
     });
 
     const goCmd = registeredCommands.get('atlas-go')!;
@@ -360,6 +364,7 @@ describe('M6 Slash Commands', () => {
       exporter,
       eventBus,
       draftService: null as unknown as MapDraftService,
+      uploadService: null as unknown as ImageUploadService,
     });
 
     const whereCmd = registeredCommands.get('atlas-where')!;
