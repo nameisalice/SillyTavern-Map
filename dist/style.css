@@ -249,6 +249,9 @@
   position: absolute;
   inset: 0;
   background: var(--black30a, rgba(0, 0, 0, 0.3));
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
 }
 
 /* Leaflet root inside the canvas should fill it. */
@@ -256,6 +259,15 @@
   width: 100%;
   height: 100%;
   background: transparent;
+  cursor: grab;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+}
+
+.st-atlas__canvas .leaflet-container.leaflet-dragging,
+.st-atlas__canvas .leaflet-container:active {
+  cursor: grabbing;
 }
 
 /* Keep Leaflet controls themed; we use custom toolbar instead. */

@@ -107,9 +107,20 @@ export class MapViewer {
       ),
       zoomControl: false,
       attributionControl: false,
-      maxBounds: bounds.pad(0.2),
-      maxBoundsViscosity: 0.8,
+      dragging: true,
+      touchZoom: true,
+      scrollWheelZoom: true,
+      doubleClickZoom: true,
+      keyboard: true,
+      maxBounds: bounds.pad(1),
+      maxBoundsViscosity: 0.35,
     });
+
+    map.dragging.enable();
+    map.touchZoom.enable();
+    map.scrollWheelZoom.enable();
+    map.doubleClickZoom.enable();
+    map.keyboard.enable();
 
     let imageUrl: string;
     try {
