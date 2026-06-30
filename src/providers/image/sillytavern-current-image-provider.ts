@@ -12,6 +12,12 @@ interface CurrentImageContext extends SillyTavernContext {
 }
 
 type SdSettings = Record<string, unknown>;
+type ExtrasFetch = (input: string | URL, init?: RequestInit) => Promise<Response>;
+
+interface ExtrasGlobal {
+  readonly doExtrasFetch?: ExtrasFetch;
+  readonly getApiUrl?: () => string;
+}
 
 const SERVER_SOURCE_ENDPOINTS: Readonly<Record<string, string>> = {
   aimlapi: '/api/sd/aimlapi/generate-image',
@@ -67,7 +73,16 @@ export class SillyTavernCurrentImageProvider implements ImageProvider {
           'Current SillyTavern image provider is not configured. Configure SillyTavern image generation or use a custom image provider.',
       };
     }
-    if (!SERVER_SOURCE_ENDPOINTS[source]) {
+    const endpoint = resolveSourceEndpoint(source, settings, context);
+    if (!endpoint) {
+      if (source === 'extras') {
+        return {
+          ok: false,
+          message:
+            'Current SillyTavern image provider uses Extras, but Atlas could not find the Extras API URL.',
+          modelId: readString(settings.model),
+        };
+      }
       return {
         ok: true,
         message: `Current SillyTavern image provider is configured (${source}); Atlas cannot directly generate images from this source yet.`,
@@ -98,20 +113,22 @@ export class SillyTavernCurrentImageProvider implements ImageProvider {
     if (!settings || !source) {
       throw new Error('Current SillyTavern image provider is not configured.');
     }
-    const endpoint = SERVER_SOURCE_ENDPOINTS[source];
+    const endpoint = resolveSourceEndpoint(source, settings, context);
     if (!endpoint) {
+      if (source === 'extras') {
+        throw new Error(
+          'Current SillyTavern image provider uses Extras, but Atlas could not find the Extras API URL.',
+        );
+      }
       throw new Error(`Atlas cannot directly generate images from SillyTavern source "${source}".`);
     }
-    if (typeof context.getRequestHeaders !== 'function') {
+    if (source !== 'extras' && typeof context.getRequestHeaders !== 'function') {
       throw new Error('Current SillyTavern image provider cannot access host request headers.');
     }
 
-    const response = await fetch(endpoint, {
+    const response = await fetchImageEndpoint(source, endpoint, {
       method: 'POST',
-      headers: {
-        ...context.getRequestHeaders(),
-        'Content-Type': 'application/json',
-      },
+      headers: buildRequestHeaders(source, context),
       body: JSON.stringify(buildImageRequestBody(source, settings, request, prompt)),
       signal,
     });
@@ -140,6 +157,79 @@ function getSource(settings: SdSettings | null): string | null {
   return source ? source.toLowerCase() : null;
 }
 
+function resolveSourceEndpoint(
+  source: string,
+  settings: SdSettings,
+  context: CurrentImageContext,
+): string | null {
+  if (source === 'extras') {
+    return resolveExtrasEndpoint(settings, context);
+  }
+  return SERVER_SOURCE_ENDPOINTS[source] ?? null;
+}
+
+function resolveExtrasEndpoint(settings: SdSettings, context: CurrentImageContext): string | null {
+  const baseUrl =
+    readString((context.extensionSettings as Record<string, unknown>).apiUrl) ||
+    readString(settings.apiUrl) ||
+    readString(settings.extras_api_url) ||
+    readString(settings.extrasUrl) ||
+    readGlobalExtrasApiUrl();
+  if (!baseUrl) {
+    return null;
+  }
+  try {
+    const url = new URL(baseUrl);
+    url.pathname = '/api/image';
+    url.search = '';
+    url.hash = '';
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+function readGlobalExtrasApiUrl(): string | undefined {
+  const globalApi = globalThis as ExtrasGlobal;
+  if (typeof globalApi.getApiUrl !== 'function') {
+    return undefined;
+  }
+  try {
+    return readString(globalApi.getApiUrl());
+  } catch {
+    return undefined;
+  }
+}
+
+function buildRequestHeaders(
+  source: string,
+  context: CurrentImageContext,
+): Record<string, string> {
+  if (source === 'extras') {
+    const apiKey = readString((context.extensionSettings as Record<string, unknown>).apiKey);
+    return {
+      ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+      'Content-Type': 'application/json',
+    };
+  }
+  return {
+    ...(context.getRequestHeaders?.() ?? {}),
+    'Content-Type': 'application/json',
+  };
+}
+
+async function fetchImageEndpoint(
+  source: string,
+  endpoint: string,
+  init: RequestInit,
+): Promise<Response> {
+  const globalApi = globalThis as ExtrasGlobal;
+  if (source === 'extras' && typeof globalApi.doExtrasFetch === 'function') {
+    return globalApi.doExtrasFetch(endpoint, init);
+  }
+  return fetch(endpoint, init);
+}
+
 function buildImageRequestBody(
   source: string,
   settings: SdSettings,
@@ -166,6 +256,24 @@ function buildImageRequestBody(
   };
 
   switch (source) {
+    case 'extras':
+      return {
+        prompt,
+        sampler: readString(settings.sampler),
+        steps: readNumber(settings.steps, 20),
+        scale: readNumber(settings.scale, 7),
+        width: dimensions.width,
+        height: dimensions.height,
+        negative_prompt: negativePrompt,
+        restore_faces: !!readBoolean(settings.restore_faces),
+        enable_hr: !!readBoolean(settings.enable_hr),
+        karras: !!readBoolean(settings.horde_karras),
+        hr_upscaler: readString(settings.hr_upscaler),
+        hr_scale: readNumber(settings.hr_scale, 2),
+        denoising_strength: readNumber(settings.denoising_strength, 0.7),
+        hr_second_pass_steps: readNumber(settings.hr_second_pass_steps, 0),
+        seed: readSeed(settings.seed),
+      };
     case 'openai':
       return {
         prompt,

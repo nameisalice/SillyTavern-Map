@@ -190,6 +190,52 @@ describe('M9 OpenAI-compatible providers', () => {
       modelId: 'gpt-image-1',
     });
   });
+
+  it('generates images from SillyTavern Extras settings', async () => {
+    vi.spyOn(contextBridge, 'tryGetContext').mockReturnValue({
+      extensionSettings: {
+        apiUrl: 'http://extras.test',
+        apiKey: 'extras-secret',
+        sd: {
+          source: 'extras',
+          sampler: 'Euler a',
+          steps: 12,
+          scale: 6,
+          width: 512,
+          height: 512,
+        },
+      },
+    } as unknown as SillyTavernContext);
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ image: btoa('\x04\x05\x06') }), {
+        status: 200,
+      }),
+    );
+
+    const provider = new SillyTavernCurrentImageProvider();
+
+    await expect(provider.testConnection()).resolves.toMatchObject({
+      ok: true,
+    });
+    const image = await provider.generateImage({
+      prompt: 'coastal empire',
+      resolution: '512x512',
+    });
+
+    expect([...image.data]).toEqual([4, 5, 6]);
+    expect(fetchSpy.mock.calls[0][0]).toBe('http://extras.test/api/image');
+    const request = JSON.parse(fetchSpy.mock.calls[0][1]?.body as string) as {
+      prompt: string;
+      sampler: string;
+    };
+    expect(request.prompt).toContain('No text');
+    expect(request.sampler).toBe('Euler a');
+    expect(JSON.stringify(request)).not.toContain('extras-secret');
+    expect(fetchSpy.mock.calls[0][1]?.headers).toMatchObject({
+      Authorization: 'Bearer extras-secret',
+      'Content-Type': 'application/json',
+    });
+  });
 });
 
 describe('M9 generation service', () => {
