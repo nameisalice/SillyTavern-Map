@@ -1,12 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AtlasGenerationService } from '@/services';
-import { OpenAICompatibleImageProvider } from '@/providers/image';
+import { OpenAICompatibleImageProvider, SillyTavernCurrentImageProvider } from '@/providers/image';
 import {
   OpenAICompatibleTextProvider,
+  SillyTavernCurrentTextProvider,
   validateMapBlueprint,
   type TextProvider,
 } from '@/providers/text';
 import type { AtlasGenerationPreset } from '@/domain';
+import * as contextBridge from '@/st/context';
 
 describe('M9 blueprint validation', () => {
   it('accepts valid structured blueprints and rejects malformed coordinates', () => {
@@ -37,6 +39,7 @@ describe('M9 OpenAI-compatible providers', () => {
   });
 
   it('generates and validates a text blueprint from JSON response content', async () => {
+    vi.spyOn(contextBridge, 'tryGetContext').mockReturnValue(null);
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -76,6 +79,77 @@ describe('M9 OpenAI-compatible providers', () => {
     expect(JSON.stringify(request)).not.toContain('secret');
   });
 
+  it('routes custom text requests through the SillyTavern backend when available', async () => {
+    vi.spyOn(contextBridge, 'tryGetContext').mockReturnValue({
+      getRequestHeaders: () => ({ 'X-CSRF-Token': 'token' }),
+    } as unknown as SillyTavernContext);
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  schemaVersion: 1,
+                  name: 'Backend Region',
+                  type: 'region',
+                  locations: [{ id: 'tower', name: 'Tower', x: 40, y: 60 }],
+                }),
+              },
+            },
+          ],
+        }),
+        { status: 200 },
+      ),
+    );
+
+    const provider = new OpenAICompatibleTextProvider({
+      id: 'text-1',
+      name: 'Text',
+      provider: 'openai-compatible',
+      endpoint: 'https://example.test/v1/chat/completions',
+      model: 'mock-model',
+      apiKey: 'secret',
+    });
+
+    await expect(
+      provider.generateMapBlueprint({ concept: 'frontier', mapType: 'region' }),
+    ).resolves.toMatchObject({ name: 'Backend Region' });
+
+    expect(fetchSpy.mock.calls[0][0]).toBe('/api/backends/chat-completions/generate');
+    const request = JSON.parse(fetchSpy.mock.calls[0][1]?.body as string) as {
+      custom_url: string;
+      chat_completion_source: string;
+    };
+    expect(request.chat_completion_source).toBe('custom');
+    expect(request.custom_url).toBe('https://example.test/v1');
+  });
+
+  it('uses the current SillyTavern text connection for blueprint generation', async () => {
+    const generateRaw = vi
+      .fn()
+      .mockResolvedValueOnce('OK')
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          schemaVersion: 1,
+          name: 'Current Region',
+          type: 'region',
+          locations: [{ id: 'bridge', name: 'Bridge', x: 25, y: 75 }],
+        }),
+      );
+    vi.spyOn(contextBridge, 'tryGetContext').mockReturnValue({
+      generateRaw,
+    } as unknown as SillyTavernContext);
+
+    const provider = new SillyTavernCurrentTextProvider();
+
+    await expect(provider.testConnection()).resolves.toMatchObject({ ok: true });
+    await expect(
+      provider.generateMapBlueprint({ concept: 'river', mapType: 'region' }),
+    ).resolves.toMatchObject({ name: 'Current Region' });
+    expect(generateRaw).toHaveBeenCalledTimes(2);
+  });
+
   it('requests unlabeled image backgrounds and decodes returned image bytes', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(JSON.stringify({ data: [{ b64_json: btoa('\x01\x02\x03') }] }), {
@@ -96,6 +170,25 @@ describe('M9 OpenAI-compatible providers', () => {
     const request = JSON.parse(fetchSpy.mock.calls[0][1]?.body as string) as { prompt: string };
     expect(request.prompt).toContain('No text');
     expect(request.prompt).toContain('markers');
+  });
+
+  it('detects current SillyTavern image provider settings', async () => {
+    vi.spyOn(contextBridge, 'tryGetContext').mockReturnValue({
+      extensionSettings: {
+        sd: {
+          source: 'openai',
+          model: 'gpt-image-1',
+        },
+      },
+      getRequestHeaders: () => ({ 'X-CSRF-Token': 'token' }),
+    } as unknown as SillyTavernContext);
+
+    const provider = new SillyTavernCurrentImageProvider();
+
+    await expect(provider.testConnection()).resolves.toMatchObject({
+      ok: true,
+      modelId: 'gpt-image-1',
+    });
   });
 });
 

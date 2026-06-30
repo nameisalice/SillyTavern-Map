@@ -71,6 +71,10 @@ interface SillyTavernContext {
   };
   /** Whether the host considers the current client mobile. */
   readonly isMobile: () => boolean;
+  /** Generates a quiet raw text completion using the currently selected ST connection. */
+  readonly generateRaw?: (prompt: string, ...args: readonly unknown[]) => Promise<string>;
+  /** Returns host request headers required by same-origin SillyTavern API calls. */
+  readonly getRequestHeaders?: () => Record<string, string>;
 
   // Slash commands declarations (Milestone 6)
   readonly SlashCommandParser: {

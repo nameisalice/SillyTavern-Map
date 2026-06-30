@@ -31,7 +31,11 @@ export class OpenAICompatibleImageProvider implements ImageProvider {
         modelId: this.profile.model,
       };
     } catch (error) {
-      return { ok: false, message: error instanceof Error ? error.message : String(error) };
+      return {
+        ok: false,
+        message: this.safeErrorMessage(error, 'Image provider request failed.'),
+        modelId: this.profile.model,
+      };
     }
   }
 
@@ -40,17 +44,22 @@ export class OpenAICompatibleImageProvider implements ImageProvider {
     signal?: ProviderAbortSignal,
   ): Promise<GeneratedMapImage> {
     const prompt = `${request.prompt}\n\nUnlabeled fantasy map background only. No text, labels, legends, icons, pins, markers, UI, or watermarks.`;
-    const response = await fetch(this.endpoint('/images/generations'), {
-      method: 'POST',
-      headers: this.headers({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({
-        model: this.profile.model,
-        prompt,
-        size: request.resolution,
-        response_format: 'b64_json',
-      }),
-      signal,
-    });
+    let response: Response;
+    try {
+      response = await fetch(this.endpoint('/images/generations'), {
+        method: 'POST',
+        headers: this.headers({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({
+          model: this.profile.model,
+          prompt,
+          size: request.resolution,
+          response_format: 'b64_json',
+        }),
+        signal,
+      });
+    } catch (error) {
+      throw new Error(this.safeErrorMessage(error, 'Image provider request failed.'));
+    }
     if (!response.ok) {
       throw new Error(`Image provider returned ${response.status}.`);
     }
@@ -66,7 +75,10 @@ export class OpenAICompatibleImageProvider implements ImageProvider {
   }
 
   private endpoint(path: string): string {
-    const base = this.profile.endpoint?.replace(/\/$/, '');
+    const base = this.profile.endpoint
+      ?.trim()
+      .replace(/\/+$/, '')
+      .replace(/\/images\/generations$/i, '');
     if (!base) {
       throw new Error('Image provider endpoint is not configured.');
     }
@@ -77,6 +89,16 @@ export class OpenAICompatibleImageProvider implements ImageProvider {
     return this.profile.apiKey
       ? { ...extra, Authorization: `Bearer ${this.profile.apiKey}` }
       : extra;
+  }
+
+  private safeErrorMessage(error: unknown, fallback: string): string {
+    const message = error instanceof Error && error.message ? error.message : fallback;
+    const redacted = this.profile.apiKey
+      ? message.split(this.profile.apiKey).join('[redacted]')
+      : message;
+    return redacted === 'Failed to fetch'
+      ? 'Image provider request failed before a response was received. The configured endpoint likely blocks browser CORS; use an endpoint that allows browser requests or use Current SillyTavern image provider.'
+      : redacted;
   }
 }
 
