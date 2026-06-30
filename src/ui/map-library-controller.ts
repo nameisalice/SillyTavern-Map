@@ -7,11 +7,11 @@
  * UI. All dynamic strings use `textContent`.
  */
 
-import { EXTENSION_NAME } from '@/constants';
 import { getContext } from '@/st/context';
 import { logError } from '@/core/logger';
 import type { AtlasMapIndexEntry } from '@/domain/map';
 import type { MapLibraryService } from '@/services/map-library-service';
+import mapLibraryTemplate from '@/templates/map-library.html?raw';
 
 /** Actions the host wires for an opened map. */
 export interface LibraryActions {
@@ -32,18 +32,12 @@ export async function openMapLibrary(
   actions: LibraryActions,
   popup: LibraryPopup,
 ): Promise<void> {
-  let html: string;
-  try {
-    html = await getContext().renderExtensionTemplateAsync(EXTENSION_NAME, 'map-library');
-  } catch (error) {
-    logError('Failed to render map library template.', error);
-    html = '';
-  }
-
+  const html = mapLibraryTemplate.trim();
   const root = document.createElement('div');
   if (html) {
     root.innerHTML = html;
   } else {
+    logError('Atlas map library template is empty; using fallback.');
     buildFallback(root);
   }
 

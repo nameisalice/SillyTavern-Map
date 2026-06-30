@@ -1,14 +1,11 @@
 /**
- * Settings controller: renders the Atlas settings drawer from an HTML
- * template and wires its controls to the settings bridge.
- *
- * The template is loaded via the host's `renderExtensionTemplateAsync`
- * (never by string-concatenating HTML), and appended to the host
- * Extension Settings column. All selectors are namespaced under
- * `.st-atlas`.
+ * Settings controller: renders the Atlas settings drawer from a bundled
+ * HTML template and wires its controls to the settings bridge. The
+ * bundled template avoids third-party install path mismatches in
+ * SillyTavern's runtime template fetcher.
  */
 
-import { EXTENSION_NAME, EXTENSION_SETTINGS_SELECTOR } from '@/constants';
+import { EXTENSION_SETTINGS_SELECTOR } from '@/constants';
 import { loadSettings, saveSettings } from '@/st/settings-bridge';
 import { getContext } from '@/st/context';
 import { logError } from '@/infra/logger';
@@ -18,6 +15,7 @@ import {
   createTextProviderFromSettings,
 } from '@/providers/provider-factory';
 import type { AtlasProviderMode } from '@/types/common/settings';
+import settingsTemplate from '@/templates/settings.html?raw';
 
 /**
  * Renders and inserts the settings drawer.
@@ -25,12 +23,9 @@ import type { AtlasProviderMode } from '@/types/common/settings';
  * extension still loads.
  */
 export async function mountSettingsDrawer(): Promise<void> {
-  let html: string;
-  try {
-    const context = getContext();
-    html = await context.renderExtensionTemplateAsync(EXTENSION_NAME, 'settings');
-  } catch (error) {
-    logError('Failed to render Atlas settings template.', error);
+  const html = settingsTemplate.trim();
+  if (!html) {
+    logError('Atlas settings template is empty.');
     return;
   }
 

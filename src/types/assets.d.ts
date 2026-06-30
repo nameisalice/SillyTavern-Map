@@ -5,9 +5,9 @@
  *   via MiniCssExtractPlugin). The import has no runtime value.
  * - `*.svg`: imported as a URL string (webpack asset module). Used for
  *   bundled placeholder artwork.
- * - `*.html`: imported as a source string when read directly via the
- *   `asset/source` webpack rule. Host-rendered templates are not imported
- *   this way; they are fetched by `renderExtensionTemplateAsync`.
+ * - `*.html`: imported as a source string via the `asset/source`
+ *   webpack rule. Atlas bundles runtime templates so third-party
+ *   installs do not depend on host template fetch paths.
  */
 
 declare module '*.css' {
@@ -21,6 +21,11 @@ declare module '*.svg' {
 }
 
 declare module '*.html' {
+  const content: string;
+  export default content;
+}
+
+declare module '*.html?raw' {
   const content: string;
   export default content;
 }

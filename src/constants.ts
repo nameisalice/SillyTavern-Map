@@ -6,13 +6,6 @@
  */
 
 /**
- * The extension name. Must match the installed folder name under
- * `scripts/extensions/third-party/<name>`. The official template pattern
- * passes this to `renderExtensionTemplateAsync`.
- */
-export const EXTENSION_NAME = 'SillyTavern-Map';
-
-/**
  * Key under which Atlas global preferences are stored inside
  * `SillyTavern.getContext().extensionSettings`. Using a stable dotted
  * key avoids collisions with other extensions.

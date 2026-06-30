@@ -104,6 +104,14 @@ export const ActionServiceToken: DependencyToken<ActionService> =
 /** The single shared container instance for the extension lifetime. */
 let container: Container | null = null;
 
+const FLOATING_LAUNCHER_POSITION_KEY = 'sillytavern_atlas.floating_launcher_position';
+const FLOATING_LAUNCHER_DRAG_THRESHOLD_PX = 6;
+
+interface FloatingLauncherPosition {
+  readonly left: number;
+  readonly top: number;
+}
+
 /**
  * Returns the shared container, creating and seeding it on first call.
  * The container holds the core singletons; feature/service modules
@@ -329,12 +337,172 @@ function mountFloatingLauncher(): void {
     button.setAttribute('data-st-atlas', 'floating-launcher');
     button.setAttribute('aria-label', 'Open Atlas');
     button.title = 'Open Atlas';
-    button.innerHTML = '<i class="fa-solid fa-map-location-dot" aria-hidden="true"></i>';
-    button.addEventListener('click', () => openAtlasPanel());
+    button.innerHTML = `
+      <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+        <path d="M12 2.5c-3.1 0-5.6 2.5-5.6 5.6 0 4.3 5.6 10.5 5.6 10.5s5.6-6.2 5.6-10.5c0-3.1-2.5-5.6-5.6-5.6Zm0 7.8a2.2 2.2 0 1 1 0-4.4 2.2 2.2 0 0 1 0 4.4Z" />
+        <path d="M5.1 19.2h13.8v2H5.1v-2Z" />
+      </svg>`;
+    bindFloatingLauncherDrag(button);
     document.body.append(button);
+    restoreFloatingLauncherPosition(button);
   } catch (error) {
     logError('Atlas floating launcher failed to mount.', error);
   }
+}
+
+function bindFloatingLauncherDrag(button: HTMLButtonElement): void {
+  let pointerId: number | null = null;
+  let startX = 0;
+  let startY = 0;
+  let startLeft = 0;
+  let startTop = 0;
+  let didDrag = false;
+  let suppressNextClick = false;
+
+  button.addEventListener('click', (event) => {
+    if (suppressNextClick) {
+      event.preventDefault();
+      event.stopPropagation();
+      suppressNextClick = false;
+      return;
+    }
+    openAtlasPanel();
+  });
+
+  button.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0) {
+      return;
+    }
+    const rect = button.getBoundingClientRect();
+    pointerId = event.pointerId;
+    startX = event.clientX;
+    startY = event.clientY;
+    startLeft = rect.left;
+    startTop = rect.top;
+    didDrag = false;
+    button.classList.add('st-atlas__floating-launcher--dragging');
+    try {
+      button.setPointerCapture(event.pointerId);
+    } catch {
+      // Pointer capture is best-effort across mobile webviews.
+    }
+  });
+
+  button.addEventListener('pointermove', (event) => {
+    if (pointerId !== event.pointerId) {
+      return;
+    }
+    const dx = event.clientX - startX;
+    const dy = event.clientY - startY;
+    if (!didDrag && Math.hypot(dx, dy) < FLOATING_LAUNCHER_DRAG_THRESHOLD_PX) {
+      return;
+    }
+    didDrag = true;
+    event.preventDefault();
+    applyFloatingLauncherPosition(button, {
+      left: startLeft + dx,
+      top: startTop + dy,
+    });
+  });
+
+  const finishDrag = (event: PointerEvent) => {
+    if (pointerId !== event.pointerId) {
+      return;
+    }
+    pointerId = null;
+    button.classList.remove('st-atlas__floating-launcher--dragging');
+    try {
+      if (button.hasPointerCapture(event.pointerId)) {
+        button.releasePointerCapture(event.pointerId);
+      }
+    } catch {
+      // Some mobile clients can lose capture before pointerup/cancel.
+    }
+    if (!didDrag) {
+      return;
+    }
+    event.preventDefault();
+    suppressNextClick = true;
+    window.setTimeout(() => {
+      suppressNextClick = false;
+    }, 0);
+    saveFloatingLauncherPosition(button);
+  };
+
+  button.addEventListener('pointerup', finishDrag);
+  button.addEventListener('pointercancel', finishDrag);
+  window.addEventListener('resize', () => {
+    clampFloatingLauncherToViewport(button);
+    saveFloatingLauncherPosition(button);
+  });
+}
+
+function restoreFloatingLauncherPosition(button: HTMLElement): void {
+  const stored = readFloatingLauncherPosition();
+  if (!stored) {
+    return;
+  }
+  applyFloatingLauncherPosition(button, stored);
+}
+
+function readFloatingLauncherPosition(): FloatingLauncherPosition | null {
+  try {
+    const raw = window.localStorage.getItem(FLOATING_LAUNCHER_POSITION_KEY);
+    if (!raw) {
+      return null;
+    }
+    const parsed = JSON.parse(raw) as Partial<FloatingLauncherPosition>;
+    if (Number.isFinite(parsed.left) && Number.isFinite(parsed.top)) {
+      return { left: Number(parsed.left), top: Number(parsed.top) };
+    }
+  } catch (error) {
+    logError('Failed to read Atlas floating launcher position.', error);
+  }
+  return null;
+}
+
+function saveFloatingLauncherPosition(button: HTMLElement): void {
+  try {
+    const rect = button.getBoundingClientRect();
+    window.localStorage.setItem(
+      FLOATING_LAUNCHER_POSITION_KEY,
+      JSON.stringify({ left: rect.left, top: rect.top }),
+    );
+  } catch (error) {
+    logError('Failed to save Atlas floating launcher position.', error);
+  }
+}
+
+function applyFloatingLauncherPosition(
+  button: HTMLElement,
+  position: FloatingLauncherPosition,
+): void {
+  const clamped = clampFloatingLauncherPosition(button, position);
+  button.style.left = `${clamped.left}px`;
+  button.style.top = `${clamped.top}px`;
+  button.style.right = 'auto';
+  button.style.bottom = 'auto';
+}
+
+function clampFloatingLauncherToViewport(button: HTMLElement): void {
+  const rect = button.getBoundingClientRect();
+  applyFloatingLauncherPosition(button, { left: rect.left, top: rect.top });
+}
+
+function clampFloatingLauncherPosition(
+  button: HTMLElement,
+  position: FloatingLauncherPosition,
+): FloatingLauncherPosition {
+  const rect = button.getBoundingClientRect();
+  const width = rect.width || 48;
+  const height = rect.height || 48;
+  const margin = 8;
+  const maxLeft = Math.max(margin, window.innerWidth - width - margin);
+  const maxTop = Math.max(margin, window.innerHeight - height - margin);
+  return {
+    left: Math.min(Math.max(position.left, margin), maxLeft),
+    top: Math.min(Math.max(position.top, margin), maxTop),
+  };
 }
 
 /** Opens the map library, wiring open/edit/create actions to services. */

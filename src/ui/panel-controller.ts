@@ -11,7 +11,6 @@
  * and never imports the composition root.
  */
 
-import { EXTENSION_NAME } from '@/constants';
 import { getContext } from '@/st/context';
 import { bindPanel, closePanel, openPanel } from '@/app/lifecycle';
 import { logError, logInfo } from '@/core/logger';
@@ -20,6 +19,7 @@ import type { TravelService } from '@/services/travel-service.types';
 import type { ActionService } from '@/services/action-service';
 import { ViewerController } from '@/features/viewer/viewer-controller';
 import type { AtlasAction } from '@/domain/actions';
+import panelTemplate from '@/templates/panel.html?raw';
 
 /** Lazily-created root element so the panel is built only once. */
 let panelRoot: HTMLElement | null = null;
@@ -173,8 +173,9 @@ export function centerActiveViewer(): void {
 }
 
 /**
- * Builds the panel DOM from the host-rendered template. Falls back to a
- * vanilla DOM if the template cannot be rendered.
+ * Builds the panel DOM from the bundled template. The extension is
+ * installed from GitHub without a build step, so the panel must not
+ * depend on SillyTavern fetching a sibling HTML file at runtime.
  */
 function createPanel(): HTMLElement {
   const root = document.createElement('div');
@@ -182,25 +183,14 @@ function createPanel(): HTMLElement {
   root.setAttribute('data-st-atlas', 'panel');
   root.setAttribute('data-st-atlas-panel-state', 'closed');
 
-  try {
-    const context = getContext();
-    void context.renderExtensionTemplateAsync(EXTENSION_NAME, 'panel').then((html) => {
-      if (panelRoot === root && html) {
-        root.innerHTML = html;
-        wirePanelControls(root);
-        // The viewer may have been requested before the template landed.
-        if (!viewerController) {
-          void mountViewer();
-        }
-      }
-    });
-  } catch (error) {
-    logError('Failed to render Atlas panel template; using fallback.', error);
+  const html = panelTemplate.trim();
+  if (html) {
+    root.innerHTML = html;
+  } else {
+    logError('Atlas panel template is empty; using fallback.');
     buildFallbackPanel(root);
-    wirePanelControls(root);
   }
-  // Wire the close button immediately (fallback has it; template wires
-  // again once loaded — idempotent because it queries the same element).
+
   wirePanelControls(root);
   return root;
 }

@@ -6,7 +6,6 @@
  * (beforeunload + exit guard). All host interaction is injected.
  */
 
-import { EXTENSION_NAME } from '@/constants';
 import { getContext } from '@/st/context';
 import { logError } from '@/core/logger';
 import type { AtlasMapDocument } from '@/domain/map';
@@ -14,6 +13,7 @@ import { EditorController, type EditorPopup, type EditorSubMode } from '@/featur
 import type { MapDraftService } from '@/services/map-draft-service';
 import type { ViewerService } from '@/services/viewer-service.types';
 import type { EventBus } from '@/core/events';
+import editorTemplate from '@/templates/editor.html?raw';
 
 /** A popup helper that mirrors the host confirm/text contract. */
 const popup: EditorPopup = async (content, type) => {
@@ -35,18 +35,12 @@ export async function openEditor(args: {
   eventBus: EventBus;
   onSaved: (document: AtlasMapDocument) => void;
 }): Promise<void> {
-  let html: string;
-  try {
-    html = await getContext().renderExtensionTemplateAsync(EXTENSION_NAME, 'editor');
-  } catch (error) {
-    logError('Failed to render editor template.', error);
-    html = '';
-  }
-
+  const html = editorTemplate.trim();
   const root = document.createElement('div');
   if (html) {
     root.innerHTML = html;
   } else {
+    logError('Atlas editor template is empty; using fallback.');
     buildFallback(root);
   }
 
