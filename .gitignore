@@ -1,17 +1,11 @@
 # Dependencies
 node_modules/
 
-# Build output
-dist/
+# Build cache
 *.tsbuildinfo
 
-# Host-rendered templates copied to the extension root by the build
-# (fetched by renderExtensionTemplateAsync at runtime).
-/panel.html
-/settings.html
-/editor.html
-/map-library.html
-/location-properties.html
+# Runtime extension artifacts are committed because SillyTavern installs
+# third-party extensions from GitHub without running the build step.
 
 # Private planning/source-of-truth documents (kept locally, not committed)
 PLAN/

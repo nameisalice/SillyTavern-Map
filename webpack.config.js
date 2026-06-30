@@ -9,9 +9,9 @@ const CopyPlugin = require('copy-webpack-plugin');
  *   dist/index.js  -> referenced by manifest.json "js"
  *   dist/style.css -> referenced by manifest.json "css"
  *
- * The host loads the bundle as a classic (non-module) script, so it is
- * built as a window library that attaches to the global jQuery ready
- * callback.
+ * The host loads the bundle as a script and Atlas starts from the
+ * global jQuery ready callback. The bundle intentionally does not
+ * export a window library; there is no public global API to attach.
  *
  * HTML templates are copied to the repo root (sibling of dist/) because
  * `renderExtensionTemplateAsync('SillyTavern-Map', id)` fetches
@@ -29,9 +29,6 @@ module.exports = (env, argv) => {
       path: path.resolve(__dirname, 'dist'),
       filename: 'index.js',
       clean: true,
-      library: {
-        type: 'window',
-      },
       // Bundled assets (SVG/PNG) are emitted under dist/assets/ and
       // referenced from the bundle by relative URL.
       assetModuleFilename: 'assets/[name][ext]',

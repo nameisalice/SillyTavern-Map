@@ -1,0 +1,93 @@
+<div class="st-atlas__editor" data-st-atlas="editor">
+  <div class="st-atlas__editor-toolbar">
+    <button
+      type="button"
+      class="st-atlas__editor-btn menu_button menu_button_icon"
+      data-st-atlas-editor-action="add"
+      title="Add a location by clicking the map"
+      aria-label="Add a location"
+    >
+      <i class="fa-solid fa-location-dot"></i><span>Add</span>
+    </button>
+    <button
+      type="button"
+      class="st-atlas__editor-btn menu_button menu_button_icon"
+      data-st-atlas-editor-action="undo"
+      title="Undo"
+      aria-label="Undo"
+    >
+      <i class="fa-solid fa-rotate-left"></i>
+    </button>
+    <button
+      type="button"
+      class="st-atlas__editor-btn menu_button menu_button_icon"
+      data-st-atlas-editor-action="redo"
+      title="Redo"
+      aria-label="Redo"
+    >
+      <i class="fa-solid fa-rotate-right"></i>
+    </button>
+    <button
+      type="button"
+      class="st-atlas__editor-btn menu_button menu_button_icon"
+      data-st-atlas-editor-action="preview"
+      title="Toggle preview mode"
+      aria-label="Toggle preview mode"
+    >
+      <i class="fa-solid fa-eye"></i><span>Preview</span>
+    </button>
+    <div class="st-atlas__editor-modes-group">
+      <button
+        type="button"
+        class="st-atlas__editor-btn menu_button menu_button_icon st-atlas__editor-btn--active-mode"
+        data-st-atlas-editor-action="mode-marker"
+        title="Marker Edit Mode"
+        aria-label="Marker Mode"
+      >
+        <i class="fa-solid fa-location-dot"></i><span>Markers</span>
+      </button>
+      <button
+        type="button"
+        class="st-atlas__editor-btn menu_button menu_button_icon"
+        data-st-atlas-editor-action="mode-region"
+        title="Region Edit Mode"
+        aria-label="Region Mode"
+      >
+        <i class="fa-solid fa-draw-polygon"></i><span>Regions</span>
+      </button>
+      <button
+        type="button"
+        class="st-atlas__editor-btn menu_button menu_button_icon"
+        data-st-atlas-editor-action="mode-route"
+        title="Route Edit Mode"
+        aria-label="Route Mode"
+      >
+        <i class="fa-solid fa-route"></i><span>Routes</span>
+      </button>
+    </div>
+    <span class="st-atlas__editor-mode" data-st-atlas="editor-mode">Edit (Markers)</span>
+    <span class="st-atlas__editor-spacer"></span>
+    <button
+      type="button"
+      class="st-atlas__editor-btn st-atlas__editor-btn--primary menu_button menu_button_icon"
+      data-st-atlas-editor-action="save"
+      title="Save map to the library"
+      aria-label="Save map"
+    >
+      <i class="fa-solid fa-floppy-disk"></i><span>Save</span>
+    </button>
+    <button
+      type="button"
+      class="st-atlas__editor-btn st-atlas__editor-btn--danger menu_button menu_button_icon"
+      data-st-atlas-editor-action="exit"
+      title="Exit the editor"
+      aria-label="Exit the editor"
+    >
+      <i class="fa-solid fa-xmark"></i><span>Exit</span>
+    </button>
+  </div>
+  <div class="st-atlas__editor-body">
+    <div class="st-atlas__canvas st-atlas__canvas--editor" data-st-atlas="editor-canvas"></div>
+    <div class="st-atlas__property-panel" data-st-atlas="editor-properties"></div>
+  </div>
+</div>

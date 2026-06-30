@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Bundled placeholder background for the "Southern Marches" example map.
+  Top-down cartographic style, intentionally unlabeled (no text, no
+  legends, no markers) so Atlas remains the source of truth for labels
+  and interactive data. Replace with real artwork before release.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+  <rect width="1600" height="1000" fill="#3a3226" />
+  <!-- Forest (northwest) -->
+  <path d="M0 0 L520 0 L460 220 L300 280 L120 240 L0 300 Z" fill="#2c4a2e" />
+  <!-- Mountains (northeast) -->
+  <path d="M900 0 L1600 0 L1600 260 L1380 220 L1120 200 L960 120 Z" fill="#5b5048" />
+  <path d="M1000 60 L1080 160 L1160 60 L1240 180 L1320 60 L1400 200 L1480 60 L1560 220 L1600 200 L1600 0 L1000 0 Z" fill="#6e6358" opacity="0.6" />
+  <!-- River (center) -->
+  <path d="M300 280 C 460 360, 520 420, 700 460 C 880 500, 1000 560, 1180 600 L 1180 640 C 1000 600, 880 540, 700 500 C 520 460, 460 400, 300 320 Z" fill="#3b5a6b" />
+  <!-- Plains (south) -->
+  <path d="M0 300 L120 240 L300 280 L460 220 L700 460 L520 560 L300 600 L0 560 Z" fill="#4a4030" />
+  <path d="M0 560 L300 600 L520 560 L700 460 L1180 600 L1600 700 L1600 1000 L0 1000 Z" fill="#52432f" />
+  <!-- Marsh (southeast) -->
+  <path d="M1180 600 L1600 700 L1600 1000 L1100 1000 L980 820 L1040 700 Z" fill="#36412e" opacity="0.85" />
+  <!-- Subtle terrain texture dots -->
+  <g fill="#ffffff" opacity="0.04">
+    <circle cx="220" cy="700" r="40" />
+    <circle cx="600" cy="820" r="55" />
+    <circle cx="1300" cy="880" r="60" />
+    <circle cx="900" cy="960" r="45" />
+  </g>
+</svg>

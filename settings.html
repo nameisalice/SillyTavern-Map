@@ -1,0 +1,213 @@
+<div class="st-atlas inline-drawer" data-st-atlas="settings">
+  <div class="inline-drawer-toggle inline-drawer-header st-atlas__settings-header">
+    <b>Atlas</b>
+    <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+  </div>
+  <div class="inline-drawer-content st-atlas__settings-body">
+    <div class="st-atlas__settings-row">
+      <label for="st-atlas-enabled" class="st-atlas__settings-label">Enable Atlas</label>
+      <input id="st-atlas-enabled" type="checkbox" class="st-atlas__checkbox" />
+    </div>
+    <div class="st-atlas__settings-row">
+      <label for="st-atlas-open-mode" class="st-atlas__settings-label">Viewer mode</label>
+      <select id="st-atlas-open-mode" class="st-atlas__select text_pole">
+        <option value="floating">Floating</option>
+        <option value="fullscreen">Fullscreen</option>
+        <option value="docked">Docked</option>
+      </select>
+    </div>
+    <div class="st-atlas__settings-row">
+      <label for="st-atlas-logging-level" class="st-atlas__settings-label">Log level</label>
+      <select id="st-atlas-logging-level" class="st-atlas__select text_pole">
+        <option value="error">Error</option>
+        <option value="warn">Warning</option>
+        <option value="info">Info</option>
+        <option value="debug">Debug</option>
+      </select>
+    </div>
+
+    <!-- AI provider section -->
+    <div class="st-atlas__settings-section-title">AI Providers</div>
+    <div class="st-atlas__settings-row">
+      <label for="st-atlas-text-provider-mode" class="st-atlas__settings-label">Text provider</label>
+      <select id="st-atlas-text-provider-mode" class="st-atlas__select text_pole">
+        <option value="disabled">Disabled</option>
+        <option value="sillytavern_current">Use current SillyTavern connection</option>
+        <option value="openai_compatible">Custom OpenAI-compatible API</option>
+      </select>
+    </div>
+    <div class="st-atlas__provider-fields" data-st-atlas-provider-fields="text">
+      <div class="st-atlas__settings-row">
+        <label for="st-atlas-text-provider-base-url" class="st-atlas__settings-label">Text Base URL</label>
+        <input id="st-atlas-text-provider-base-url" type="url" class="st-atlas__select text_pole" />
+      </div>
+      <div class="st-atlas__settings-row">
+        <label for="st-atlas-text-provider-model" class="st-atlas__settings-label">Text model</label>
+        <input id="st-atlas-text-provider-model" type="text" class="st-atlas__select text_pole" />
+      </div>
+      <div class="st-atlas__settings-row">
+        <label for="st-atlas-text-provider-api-key" class="st-atlas__settings-label">Text API key</label>
+        <input
+          id="st-atlas-text-provider-api-key"
+          type="password"
+          autocomplete="off"
+          class="st-atlas__select text_pole"
+        />
+      </div>
+      <div class="st-atlas__settings-row">
+        <label for="st-atlas-text-provider-timeout" class="st-atlas__settings-label">Text timeout ms</label>
+        <input
+          id="st-atlas-text-provider-timeout"
+          type="number"
+          min="1000"
+          max="300000"
+          class="st-atlas__input text_pole"
+        />
+      </div>
+    </div>
+    <div class="st-atlas__settings-row">
+      <button id="st-atlas-test-text-provider" type="button" class="menu_button">
+        Test Text Provider
+      </button>
+    </div>
+
+    <div class="st-atlas__settings-row">
+      <label for="st-atlas-image-provider-mode" class="st-atlas__settings-label">Image provider</label>
+      <select id="st-atlas-image-provider-mode" class="st-atlas__select text_pole">
+        <option value="disabled">Disabled</option>
+        <option value="sillytavern_current">Use SillyTavern image generation</option>
+        <option value="openai_compatible">Custom OpenAI-compatible Image API</option>
+      </select>
+    </div>
+    <div class="st-atlas__provider-fields" data-st-atlas-provider-fields="image">
+      <div class="st-atlas__settings-row">
+        <label for="st-atlas-image-provider-base-url" class="st-atlas__settings-label">Image Base URL</label>
+        <input id="st-atlas-image-provider-base-url" type="url" class="st-atlas__select text_pole" />
+      </div>
+      <div class="st-atlas__settings-row">
+        <label for="st-atlas-image-provider-model" class="st-atlas__settings-label">Image model</label>
+        <input id="st-atlas-image-provider-model" type="text" class="st-atlas__select text_pole" />
+      </div>
+      <div class="st-atlas__settings-row">
+        <label for="st-atlas-image-provider-api-key" class="st-atlas__settings-label">Image API key</label>
+        <input
+          id="st-atlas-image-provider-api-key"
+          type="password"
+          autocomplete="off"
+          class="st-atlas__select text_pole"
+        />
+      </div>
+      <div class="st-atlas__settings-row">
+        <label for="st-atlas-image-provider-resolution" class="st-atlas__settings-label">Image resolution</label>
+        <input
+          id="st-atlas-image-provider-resolution"
+          type="text"
+          class="st-atlas__select text_pole"
+        />
+      </div>
+      <div class="st-atlas__settings-row">
+        <label for="st-atlas-image-provider-timeout" class="st-atlas__settings-label">Image timeout ms</label>
+        <input
+          id="st-atlas-image-provider-timeout"
+          type="number"
+          min="1000"
+          max="600000"
+          class="st-atlas__input text_pole"
+        />
+      </div>
+    </div>
+    <div class="st-atlas__settings-row">
+      <button id="st-atlas-test-image-provider" type="button" class="menu_button">
+        Test Image Provider
+      </button>
+    </div>
+
+    <!-- Spatial prompt context section -->
+    <div class="st-atlas__settings-section-title">Spatial Context Injection</div>
+    <div class="st-atlas__settings-row">
+      <label for="st-atlas-prompt-injection" class="st-atlas__settings-label"
+        >Enable context injection</label
+      >
+      <input id="st-atlas-prompt-injection" type="checkbox" class="st-atlas__checkbox" />
+    </div>
+    <div class="st-atlas__settings-row">
+      <label for="st-atlas-max-nearby" class="st-atlas__settings-label">Max nearby locations</label>
+      <input
+        id="st-atlas-max-nearby"
+        type="number"
+        min="0"
+        max="25"
+        class="st-atlas__input text_pole"
+      />
+    </div>
+    <div class="st-atlas__settings-row">
+      <label for="st-atlas-include-distances" class="st-atlas__settings-label"
+        >Include distances/times</label
+      >
+      <input id="st-atlas-include-distances" type="checkbox" class="st-atlas__checkbox" />
+    </div>
+    <div class="st-atlas__settings-row">
+      <label for="st-atlas-include-danger" class="st-atlas__settings-label"
+        >Include danger levels</label
+      >
+      <input id="st-atlas-include-danger" type="checkbox" class="st-atlas__checkbox" />
+    </div>
+    <div class="st-atlas__settings-row">
+      <label for="st-atlas-include-restrictions" class="st-atlas__settings-label"
+        >Include restrictions/locks</label
+      >
+      <input id="st-atlas-include-restrictions" type="checkbox" class="st-atlas__checkbox" />
+    </div>
+    <div class="st-atlas__settings-row">
+      <label for="st-atlas-size-limit" class="st-atlas__settings-label">Context token limit</label>
+      <input
+        id="st-atlas-size-limit"
+        type="number"
+        min="50"
+        max="2000"
+        class="st-atlas__input text_pole"
+      />
+    </div>
+    <div class="st-atlas__settings-row">
+      <label for="st-atlas-prompt-position" class="st-atlas__settings-label"
+        >Injection position</label
+      >
+      <select id="st-atlas-prompt-position" class="st-atlas__select text_pole">
+        <option value="-1">NONE</option>
+        <option value="0">IN_PROMPT (Character note)</option>
+        <option value="1">IN_CHAT (In chat context)</option>
+        <option value="2">BEFORE_PROMPT (System prompt)</option>
+      </select>
+    </div>
+    <div class="st-atlas__settings-row">
+      <label for="st-atlas-prompt-depth" class="st-atlas__settings-label">Injection depth</label>
+      <input
+        id="st-atlas-prompt-depth"
+        type="number"
+        min="0"
+        max="10000"
+        class="st-atlas__input text_pole"
+      />
+    </div>
+
+    <!-- Spatial prompt preview -->
+    <div class="st-atlas__settings-row st-atlas__settings-row--col">
+      <div class="st-atlas__settings-preview-header">
+        <span class="st-atlas__settings-label">Injection Preview</span>
+        <button
+          id="st-atlas-refresh-preview"
+          type="button"
+          class="menu_button st-atlas__settings-preview-btn"
+        >
+          Refresh
+        </button>
+      </div>
+      <textarea
+        id="st-atlas-preview"
+        readonly
+        rows="8"
+        class="st-atlas__preview-textarea text_pole"
+      ></textarea>
+    </div>
+  </div>
+</div>

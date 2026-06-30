@@ -1,0 +1,72 @@
+<div class="st-atlas__panel-header">
+  <span class="st-atlas__panel-title">Atlas</span>
+  <div class="st-atlas__panel-toolbar">
+    <button
+      type="button"
+      class="st-atlas__toolbar-btn menu_button menu_button_icon"
+      data-st-atlas-action="fit"
+      title="Fit map to viewport"
+      aria-label="Fit map to viewport"
+    >
+      <i class="fa-solid fa-expand"></i>
+    </button>
+    <button
+      type="button"
+      class="st-atlas__toolbar-btn menu_button menu_button_icon"
+      data-st-atlas-action="center"
+      title="Center on current location"
+      aria-label="Center on current location"
+    >
+      <i class="fa-solid fa-location-crosshairs"></i>
+    </button>
+    <button
+      type="button"
+      class="st-atlas__toolbar-btn menu_button menu_button_icon"
+      data-st-atlas-action="zoom-in"
+      title="Zoom in"
+      aria-label="Zoom in"
+    >
+      <i class="fa-solid fa-magnifying-glass-plus"></i>
+    </button>
+    <button
+      type="button"
+      class="st-atlas__toolbar-btn menu_button menu_button_icon"
+      data-st-atlas-action="zoom-out"
+      title="Zoom out"
+      aria-label="Zoom out"
+    >
+      <i class="fa-solid fa-magnifying-glass-minus"></i>
+    </button>
+    <button
+      type="button"
+      class="st-atlas__toolbar-btn menu_button menu_button_icon st-atlas__toolbar-btn--toggle"
+      data-st-atlas-action="toggle-regions"
+      title="Toggle regions layer"
+      aria-label="Toggle regions"
+    >
+      <i class="fa-solid fa-draw-polygon"></i>
+    </button>
+    <button
+      type="button"
+      class="st-atlas__toolbar-btn menu_button menu_button_icon st-atlas__toolbar-btn--toggle"
+      data-st-atlas-action="toggle-routes"
+      title="Toggle routes layer"
+      aria-label="Toggle routes"
+    >
+      <i class="fa-solid fa-route"></i>
+    </button>
+  </div>
+  <button
+    type="button"
+    class="st-atlas__panel-close menu_button menu_button_icon"
+    aria-label="Close Atlas panel"
+  >
+    <i class="fa-solid fa-xmark"></i>
+  </button>
+</div>
+<div class="st-atlas__breadcrumbs-container">
+  <div class="st-atlas__breadcrumbs" data-st-atlas="breadcrumbs"></div>
+</div>
+<div class="st-atlas__panel-body">
+  <div class="st-atlas__canvas" data-st-atlas="canvas"></div>
+</div>
