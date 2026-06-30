@@ -59,6 +59,7 @@ export class EditorController {
   private readonly onExit: () => void;
   private readonly imageUrlOverride?: string;
   private addingLocation = false;
+  private addingRoute = false;
   private routeOriginId: string | null = null;
 
   constructor(args: {
@@ -106,7 +107,7 @@ export class EditorController {
       onTogglePreview: () => this.togglePreview(),
       onExit: () => void this.exit(),
       onAddLocation: () => this.beginAddLocation(),
-      onChangeSubMode: (subMode) => this.session.setSubMode(subMode),
+      onChangeSubMode: (subMode) => this.changeSubMode(subMode),
     });
     this.render();
     this.viewer.invalidateSize();
@@ -136,7 +137,13 @@ export class EditorController {
 
   togglePreview(): void {
     const next = this.session.getMode() === 'edit' ? 'preview' : 'edit';
+    if (next === 'preview') {
+      this.addingLocation = false;
+      this.addingRoute = false;
+      this.routeOriginId = null;
+    }
     this.session.setMode(next);
+    this.updateCanvasInteractionState();
     this.eventBus.emit('EditorModeChanged', {
       mapId: this.session.getDocument().id,
       mode: next,
@@ -150,8 +157,26 @@ export class EditorController {
     const subMode = this.session.getState().subMode;
     if (subMode === 'marker' || subMode === 'region') {
       this.addingLocation = true;
-      this.container.classList.add('st-atlas__canvas--placing');
+      this.addingRoute = false;
+      this.routeOriginId = null;
+      this.updateCanvasInteractionState();
+      return;
     }
+    if (subMode === 'route') {
+      this.addingRoute = true;
+      this.addingLocation = false;
+      this.routeOriginId = null;
+      this.updateCanvasInteractionState();
+      void this.popup('Click the first marker, then click the target marker to create a route.', 'text');
+    }
+  }
+
+  changeSubMode(subMode: EditorSubMode): void {
+    this.addingLocation = false;
+    this.addingRoute = false;
+    this.routeOriginId = null;
+    this.session.setSubMode(subMode);
+    this.updateCanvasInteractionState();
   }
 
   async save(): Promise<void> {
@@ -199,6 +224,7 @@ export class EditorController {
     this.eventBus.emit('MapDraftChanged', { mapId: document.id, isDirty: state.isDirty });
 
     this.clearVertexMarkers();
+    this.updateCanvasInteractionState();
 
     // Determine submode and selections
     const isEditMode = state.mode === 'edit';
@@ -257,11 +283,14 @@ export class EditorController {
       // Connect routes
       if (!this.routeOriginId) {
         this.routeOriginId = locationId;
-        this.popup(`Origin set: "${locationId}". Click target marker to connect.`, 'text');
+        this.addingRoute = true;
+        this.updateCanvasInteractionState();
+        this.session.selectItem(locationId, 'location');
       } else {
         if (this.routeOriginId === locationId) {
           this.routeOriginId = null;
-          this.popup('Route origin cleared.', 'text');
+          this.addingRoute = false;
+          this.updateCanvasInteractionState();
           return;
         }
         try {
@@ -272,8 +301,10 @@ export class EditorController {
           });
           this.session.selectItem(routeId, 'route');
           this.routeOriginId = null;
+          this.addingRoute = false;
+          this.updateCanvasInteractionState();
         } catch (error) {
-          this.popup(`Could not connect locations: ${error instanceof Error ? error.message : String(error)}`, 'text');
+          void this.popup(`Could not connect locations: ${error instanceof Error ? error.message : String(error)}`, 'text');
         }
       }
     } else {
@@ -282,16 +313,10 @@ export class EditorController {
   }
 
   private onRegionClick(regionId: string): void {
-    if (this.session.getMode() === 'edit' && this.session.getState().subMode !== 'region') {
-      return;
-    }
     this.session.selectItem(regionId, 'region');
   }
 
   private onRouteClick(routeId: string): void {
-    if (this.session.getMode() === 'edit' && this.session.getState().subMode !== 'route') {
-      return;
-    }
     this.session.selectItem(routeId, 'route');
   }
 
@@ -300,7 +325,7 @@ export class EditorController {
       return;
     }
     this.addingLocation = false;
-    this.container.classList.remove('st-atlas__canvas--placing');
+    this.updateCanvasInteractionState();
     const dims = this.viewer.getDimensions();
     const { x, y } = latLngToNormalized(event.latlng.lat, event.latlng.lng, dims.width, dims.height);
 
@@ -316,9 +341,9 @@ export class EditorController {
       const id = this.session.addRegionOp({
         name,
         polygon: [
-          [x, y],
-          [x + 4, y],
-          [x, y + 6],
+          [clampNormalized(x - 4), clampNormalized(y - 3)],
+          [clampNormalized(x + 4), clampNormalized(y - 3)],
+          [clampNormalized(x), clampNormalized(y + 5)],
         ],
       });
       this.session.selectItem(id, 'region');
@@ -472,6 +497,12 @@ export class EditorController {
     this.vertexMarkers = [];
   }
 
+  private updateCanvasInteractionState(): void {
+    this.container.classList.toggle('st-atlas__canvas--placing', this.addingLocation);
+    this.container.classList.toggle('st-atlas__canvas--connecting', this.addingRoute);
+    this.container.dataset['editorSubmode'] = this.session.getState().subMode;
+  }
+
   private async showValidationErrors(validation: ValidationResult): Promise<void> {
     const list = document.createElement('ul');
     list.className = 'st-atlas__validation-list';
@@ -498,4 +529,8 @@ export class EditorController {
     }
     return 'discard';
   }
+}
+
+function clampNormalized(value: number): number {
+  return Math.max(0, Math.min(100, value));
 }

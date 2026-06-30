@@ -48,13 +48,15 @@ export interface PropertyPanelValues {
 }
 
 export class PropertyPanel {
-  private readonly container: HTMLElement;
+  private container: HTMLElement;
   private readonly onChange: (values: PropertyPanelValues) => void;
   private activeItemType: 'location' | 'region' | 'route' | null = null;
 
   constructor(container: HTMLElement, onChange: (values: PropertyPanelValues) => void) {
     this.container = container;
     this.onChange = onChange;
+    this.container.addEventListener('input', () => this.emit());
+    this.container.addEventListener('change', () => this.emit());
   }
 
   /** Renders a Location form. textContent safe. */
@@ -145,15 +147,8 @@ export class PropertyPanel {
   }
 
   private bindEvents(): void {
-    // Clean listener and bind once
-    this.container.replaceWith(this.container.cloneNode(true));
-    const fresh = document.querySelector<HTMLElement>('.st-atlas__property-panel');
-    if (fresh) {
-      // Re-assign the container reference to keep elements wired
-      Object.assign(this, { container: fresh });
-      fresh.addEventListener('input', () => this.emit());
-      fresh.addEventListener('change', () => this.emit());
-    }
+    // The container owns one delegated input/change listener for its lifetime.
+    // Re-rendering replaces only children so selection forms never detach.
   }
 
   private collectValues(): PropertyPanelValues | null {

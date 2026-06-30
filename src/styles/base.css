@@ -89,3 +89,60 @@
   border: 1px solid var(--SmartThemeBorderColor, #333);
   border-radius: 4px;
 }
+
+.st-atlas__create-map {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75em;
+  width: min(34em, 92vw);
+}
+
+.st-atlas__create-map-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25em;
+  align-items: stretch;
+}
+
+.st-atlas__create-map-label {
+  font-weight: 600;
+}
+
+.st-atlas__create-map-input {
+  width: 100%;
+}
+
+.st-atlas__file-field {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.5em;
+  width: 100%;
+  min-height: 2.4em;
+  cursor: pointer;
+}
+
+.st-atlas__file-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.st-atlas__file-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.2em;
+  padding: 0 0.75em;
+  pointer-events: none;
+}
+
+.st-atlas__file-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.85;
+  pointer-events: none;
+}

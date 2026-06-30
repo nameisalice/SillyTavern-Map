@@ -159,6 +159,7 @@ function toolbarHandler(
         const capitalSub = subMode.charAt(0).toUpperCase() + subMode.slice(1);
         modeText.textContent = `Edit (${capitalSub}s)`;
       }
+      updateAddButton(root, subMode);
       commands.onChangeSubMode(subMode);
     };
   }
@@ -187,6 +188,31 @@ function toolbarHandler(
       return () => commands.onExit();
     default:
       return null;
+  }
+}
+
+function updateAddButton(root: HTMLElement, subMode: EditorSubMode): void {
+  const addButton = root.querySelector<HTMLElement>('[data-st-atlas-editor-action="add"]');
+  if (!addButton) {
+    return;
+  }
+  const label = addButton.querySelector('span');
+  const icon = addButton.querySelector('i');
+  if (subMode === 'marker') {
+    addButton.title = 'Add a marker by clicking the map';
+    addButton.setAttribute('aria-label', 'Add marker');
+    if (label) label.textContent = 'Add Marker';
+    if (icon) icon.className = 'fa-solid fa-location-dot';
+  } else if (subMode === 'region') {
+    addButton.title = 'Add a region by clicking the map';
+    addButton.setAttribute('aria-label', 'Add region');
+    if (label) label.textContent = 'Add Region';
+    if (icon) icon.className = 'fa-solid fa-draw-polygon';
+  } else {
+    addButton.title = 'Add a route by clicking two markers';
+    addButton.setAttribute('aria-label', 'Add route');
+    if (label) label.textContent = 'Add Route';
+    if (icon) icon.className = 'fa-solid fa-route';
   }
 }
 

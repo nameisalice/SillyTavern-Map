@@ -6,10 +6,11 @@
  * location cleanup, and unsaved-change decision logic.
  */
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { SOUTHERN_MARCHES } from '@/examples/southern-marches';
 import {
   EditorHistory,
+  PropertyPanel,
   type EditorSnapshot,
   addMarker,
   addRegion,
@@ -250,6 +251,52 @@ describe('unsaved-change decision logic', () => {
   it('cancels when the user chooses cancel or null', () => {
     expect(resolveUnsavedChange(true, 'cancel')).toEqual({ proceed: false, save: false });
     expect(resolveUnsavedChange(true, null)).toEqual({ proceed: false, save: false });
+  });
+});
+
+describe('property panel UI', () => {
+  it('keeps one stable container and emits edits after re-render', () => {
+    const host = document.createElement('div');
+    host.className = 'st-atlas__property-panel';
+    document.body.append(host);
+    const onChange = vi.fn();
+    const panel = new PropertyPanel(host, onChange);
+    const location = clone().locations[0];
+
+    panel.renderLocation(location, false);
+    const firstContainer = document.querySelector('.st-atlas__property-panel');
+    expect(firstContainer).toBe(host);
+    host.querySelector<HTMLInputElement>('[name="name"]')!.value = 'Renamed Gate';
+    host
+      .querySelector<HTMLInputElement>('[name="name"]')!
+      .dispatchEvent(new Event('input', { bubbles: true }));
+    expect(onChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        type: 'location',
+        location: expect.objectContaining({ name: 'Renamed Gate' }),
+      }),
+    );
+
+    panel.renderRegion(clone().regions[0] ?? {
+      id: 'test-region',
+      name: 'Test Region',
+      polygon: [
+        [10, 10],
+        [20, 10],
+        [10, 20],
+      ],
+    });
+    expect(document.querySelector('.st-atlas__property-panel')).toBe(host);
+    host.querySelector<HTMLInputElement>('[name="name"]')!.value = 'Renamed Region';
+    host
+      .querySelector<HTMLInputElement>('[name="name"]')!
+      .dispatchEvent(new Event('input', { bubbles: true }));
+    expect(onChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        type: 'region',
+        region: expect.objectContaining({ name: 'Renamed Region' }),
+      }),
+    );
   });
 });
 

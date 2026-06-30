@@ -111,12 +111,24 @@ function buildTypeSelect(): HTMLElement {
 }
 
 function buildFileInput(): HTMLElement {
+  const wrapper = document.createElement('span');
+  wrapper.className = 'st-atlas__file-field';
   const input = document.createElement('input');
   input.type = 'file';
   input.name = 'image';
   input.accept = 'image/png,image/jpeg,image/webp';
-  input.className = 'st-atlas__create-map-input';
-  return input;
+  input.className = 'st-atlas__file-input';
+  const button = document.createElement('span');
+  button.className = 'st-atlas__file-button menu_button';
+  button.textContent = 'Choose image';
+  const filename = document.createElement('span');
+  filename.className = 'st-atlas__file-name';
+  filename.textContent = 'No image selected';
+  input.addEventListener('change', () => {
+    filename.textContent = input.files?.[0]?.name ?? 'No image selected';
+  });
+  wrapper.append(input, button, filename);
+  return wrapper;
 }
 
 /**
