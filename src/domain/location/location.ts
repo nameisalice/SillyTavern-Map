@@ -1,3 +1,5 @@
+import type { AtlasAction } from '@/domain/actions';
+
 /**
  * Location domain types.
  *
@@ -28,7 +30,5 @@ export interface AtlasLocation {
   readonly hiddenUntilDiscovered?: boolean;
   readonly childMapId?: string;
   readonly worldInfoKeywords?: readonly string[];
-  // Actions are declared in the actions domain module; referenced by
-  // id-only here to avoid a circular import until that module lands.
-  // readonly actions?: readonly AtlasAction[];
+  readonly actions?: readonly AtlasAction[];
 }

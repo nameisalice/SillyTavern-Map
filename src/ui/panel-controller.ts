@@ -17,7 +17,9 @@ import { bindPanel, closePanel, openPanel } from '@/app/lifecycle';
 import { logError, logInfo } from '@/core/logger';
 import type { ViewerService, ViewerToolbar } from '@/services/viewer-service.types';
 import type { TravelService } from '@/services/travel-service.types';
+import type { ActionService } from '@/services/action-service';
 import { ViewerController } from '@/features/viewer/viewer-controller';
+import type { AtlasAction } from '@/domain/actions';
 
 /** Lazily-created root element so the panel is built only once. */
 let panelRoot: HTMLElement | null = null;
@@ -27,6 +29,8 @@ let viewerController: ViewerController | null = null;
 let viewerService: ViewerService | null = null;
 /** Injected by the composition root. */
 let travelService: TravelService | null = null;
+/** Injected by the composition root. */
+let actionService: ActionService | null = null;
 
 /**
  * Injects the travel service. Called once by bootstrap before the panel
@@ -34,6 +38,11 @@ let travelService: TravelService | null = null;
  */
 export function setTravelService(service: TravelService): void {
   travelService = service;
+}
+
+/** Injects the safe action service. Called once by bootstrap. */
+export function setActionService(service: ActionService): void {
+  actionService = service;
 }
 
 /**
@@ -273,6 +282,7 @@ async function mountViewer(): Promise<void> {
       showDetail: (element) => service.showLocationDetail(element),
       requestTravel: (locationId) => void handleTravel(locationId),
       requestOpenChildMap: (childMapId) => void handleOpenChildMap(childMapId),
+      requestAction: (action) => void handleAction(action),
       discoveredLocationIds,
       discoveredRegionIds,
       currentLocationId: currentLocId,
@@ -282,6 +292,18 @@ async function mountViewer(): Promise<void> {
     void updateBreadcrumbs();
   } catch (error) {
     logError('Failed to mount map viewer.', error);
+  }
+}
+
+/** Executes a declarative map action and surfaces the result. */
+async function handleAction(action: AtlasAction): Promise<void> {
+  if (!actionService) {
+    return;
+  }
+  const result = await actionService.execute(action);
+  if (!result.ok || result.blocked) {
+    const context = getContext();
+    await context.callGenericPopup(result.message, context.POPUP_TYPE.TEXT);
   }
 }
 

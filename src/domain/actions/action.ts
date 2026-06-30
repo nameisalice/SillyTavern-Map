@@ -50,6 +50,8 @@ export interface RunStscriptAction {
   readonly type: 'run_stscript';
   readonly script: string;
   readonly requiresConfirmation: true;
+  /** False or omitted for imported scripts until explicitly trusted. */
+  readonly trusted?: boolean;
 }
 
 /** Any declarative action. */

@@ -46,7 +46,7 @@ describe('mergeDefaults', () => {
       openMode: 'floating',
       loggingLevel: 'info',
       somethingObsolete: true,
-      allowAdvancedScripts: true,
+      oldScriptTrustFlag: true,
     } as unknown as Record<string, unknown>);
     expect(result).toEqual(DEFAULT_SETTINGS);
     // Unknown keys must not appear on the typed result.
@@ -59,5 +59,14 @@ describe('mergeDefaults', () => {
       ...DEFAULT_SETTINGS,
       enabled: false,
     });
+  });
+
+  it('preserves safe action settings when valid', () => {
+    const result = mergeDefaults({
+      allowAdvancedScripts: true,
+      confirmImportedScripts: false,
+    });
+    expect(result.allowAdvancedScripts).toBe(true);
+    expect(result.confirmImportedScripts).toBe(false);
   });
 });

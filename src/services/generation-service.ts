@@ -9,6 +9,7 @@
 
 import type { AtlasGenerationPreset, AtlasMapType } from '@/domain';
 import type { AtlasMapBlueprint } from '@/providers/text';
+import type { TextProvider } from '@/providers/text';
 
 /** Request to generate a map blueprint. */
 export interface GenerationRequest {
@@ -22,4 +23,20 @@ export interface GenerationRequest {
 export interface GenerationService {
   /** Generates a validated map blueprint from a concept. */
   generateBlueprint(request: GenerationRequest): Promise<AtlasMapBlueprint>;
+}
+
+export class AtlasGenerationService implements GenerationService {
+  constructor(private readonly textProviders: ReadonlyMap<string, TextProvider>) {}
+
+  async generateBlueprint(request: GenerationRequest): Promise<AtlasMapBlueprint> {
+    const provider = this.textProviders.get(request.preset.textProfileId);
+    if (!provider) {
+      throw new Error(`Text provider profile "${request.preset.textProfileId}" is not configured.`);
+    }
+    return provider.generateMapBlueprint({
+      concept: request.concept,
+      mapType: request.mapType,
+      stylePrompt: request.stylePrompt ?? request.preset.stylePrompt,
+    });
+  }
 }

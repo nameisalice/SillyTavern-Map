@@ -44,6 +44,8 @@ export function mergeDefaults(stored: Record<string, unknown>): AtlasSettings {
     contextSizeLimit: stored['contextSizeLimit'],
     promptPosition: stored['promptPosition'],
     promptDepth: stored['promptDepth'],
+    allowAdvancedScripts: stored['allowAdvancedScripts'],
+    confirmImportedScripts: stored['confirmImportedScripts'],
   };
 
   const enabled = typeof known.enabled === 'boolean' ? known.enabled : DEFAULT_SETTINGS.enabled;
@@ -116,6 +118,16 @@ export function mergeDefaults(stored: Record<string, unknown>): AtlasSettings {
       ? known.promptDepth
       : DEFAULT_SETTINGS.promptDepth;
 
+  const allowAdvancedScripts =
+    typeof known.allowAdvancedScripts === 'boolean'
+      ? known.allowAdvancedScripts
+      : DEFAULT_SETTINGS.allowAdvancedScripts;
+
+  const confirmImportedScripts =
+    typeof known.confirmImportedScripts === 'boolean'
+      ? known.confirmImportedScripts
+      : DEFAULT_SETTINGS.confirmImportedScripts;
+
   return {
     enabled,
     openMode,
@@ -129,6 +141,8 @@ export function mergeDefaults(stored: Record<string, unknown>): AtlasSettings {
     contextSizeLimit,
     promptPosition,
     promptDepth,
+    allowAdvancedScripts,
+    confirmImportedScripts,
   };
 }
 
@@ -164,6 +178,8 @@ export function saveSettings(next: Partial<AtlasSettings>): void {
     contextSizeLimit: next.contextSizeLimit ?? current.contextSizeLimit,
     promptPosition: next.promptPosition ?? current.promptPosition,
     promptDepth: next.promptDepth ?? current.promptDepth,
+    allowAdvancedScripts: next.allowAdvancedScripts ?? current.allowAdvancedScripts,
+    confirmImportedScripts: next.confirmImportedScripts ?? current.confirmImportedScripts,
   };
 
   context.extensionSettings[SETTINGS_KEY] = updated;

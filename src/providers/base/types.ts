@@ -45,3 +45,15 @@ export interface ImageProviderCapabilities {
  * not depend on DOM lib types directly, though it matches `AbortSignal`.
  */
 export type ProviderAbortSignal = AbortSignal | undefined;
+
+/** Stored provider profile without exporting credentials in map data. */
+export interface AtlasProviderProfile {
+  readonly id: string;
+  readonly name: string;
+  readonly provider: string;
+  readonly model?: string;
+  readonly endpoint?: string;
+  /** Runtime-only credential; never written into map exports. */
+  readonly apiKey?: string;
+  readonly timeoutMs?: number;
+}

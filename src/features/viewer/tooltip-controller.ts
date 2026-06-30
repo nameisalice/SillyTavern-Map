@@ -13,6 +13,7 @@
 
 import type { AtlasLocation } from '@/domain/location';
 
+import type { AtlasAction } from '@/domain/actions';
 import type { AtlasRegion } from '@/domain/region';
 import type { AtlasRoute } from '@/domain/route';
 
@@ -49,6 +50,7 @@ export function buildLocationDetailElement(
   isCurrent?: boolean,
   onTravelClick?: () => void,
   onChildMapClick?: () => void,
+  onActionClick?: (action: AtlasAction) => void,
 ): HTMLElement {
   const { title, lines } = buildLocationDetail(location);
   const root = document.createElement('div');
@@ -87,6 +89,8 @@ export function buildLocationDetailElement(
     btnContainer.append(btn);
   }
 
+  appendActionButtons(btnContainer, location.actions, onActionClick);
+
   if (btnContainer.childNodes.length > 0) {
     root.append(btnContainer);
   }
@@ -111,6 +115,29 @@ export function buildRegionDetailElement(region: AtlasRegion): HTMLElement {
     root.append(desc);
   }
 
+  const btnContainer = document.createElement('div');
+  btnContainer.className = 'st-atlas__location-detail-actions';
+  appendActionButtons(btnContainer, region.actions);
+  if (btnContainer.childNodes.length > 0) {
+    root.append(btnContainer);
+  }
+
+  return root;
+}
+
+export function buildRegionDetailElementWithActions(
+  region: AtlasRegion,
+  onActionClick?: (action: AtlasAction) => void,
+): HTMLElement {
+  const root = buildRegionDetailElement(region);
+  const btnContainer = root.querySelector<HTMLElement>('.st-atlas__location-detail-actions');
+  if (btnContainer) {
+    btnContainer.replaceChildren();
+    appendActionButtons(btnContainer, region.actions, onActionClick);
+    if (btnContainer.childNodes.length === 0) {
+      btnContainer.remove();
+    }
+  }
   return root;
 }
 
@@ -172,4 +199,39 @@ export function buildRouteDetailElement(
   }
 
   return root;
+}
+
+function appendActionButtons(
+  container: HTMLElement,
+  actions: readonly AtlasAction[] | undefined,
+  onActionClick?: (action: AtlasAction) => void,
+): void {
+  if (!actions || actions.length === 0 || !onActionClick) {
+    return;
+  }
+  actions.forEach((action, index) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'st-atlas__action-btn menu_button';
+    btn.textContent = actionLabel(action, index);
+    btn.addEventListener('click', () => onActionClick(action));
+    container.append(btn);
+  });
+}
+
+function actionLabel(action: AtlasAction, index: number): string {
+  switch (action.type) {
+    case 'set_location':
+      return 'Set Location';
+    case 'open_map':
+      return 'Open Map';
+    case 'set_background':
+      return 'Set Background';
+    case 'send_system_note':
+      return 'Send Note';
+    case 'run_quick_reply':
+      return action.label || 'Quick Reply';
+    case 'run_stscript':
+      return `Advanced Script ${index + 1}`;
+  }
 }

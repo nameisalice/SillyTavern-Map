@@ -172,6 +172,24 @@ export class AtlasTravelService implements TravelService {
     });
   }
 
+  async hideLocation(locationId: string): Promise<void> {
+    const state = await this.loadChatState();
+    const updatedLocationIds = state.discoveredLocationIds.filter((id) => id !== locationId);
+    const updatedState: AtlasChatState = {
+      ...state,
+      activeLocationId: state.activeLocationId === locationId ? undefined : state.activeLocationId,
+      discoveredLocationIds: updatedLocationIds,
+    };
+    saveChatMetadataState(updatedState);
+    this.eventBus.emit('DiscoveryChanged', {
+      locationIds: updatedState.discoveredLocationIds,
+      regionIds: updatedState.discoveredRegionIds,
+    });
+    if (state.activeLocationId === locationId && state.activeMapId) {
+      this.eventBus.emit('LocationChanged', { mapId: state.activeMapId, locationId: '' });
+    }
+  }
+
   async loadChatState(): Promise<AtlasChatState> {
     return loadChatMetadataState();
   }

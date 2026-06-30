@@ -4,6 +4,7 @@
 
 export type {
   ImageProviderCapabilities,
+  AtlasProviderProfile,
   ProviderAbortSignal,
   ProviderTestResult,
   TextProviderCapabilities,

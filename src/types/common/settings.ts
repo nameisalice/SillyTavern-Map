@@ -23,6 +23,10 @@ export interface AtlasSettings {
   readonly contextSizeLimit: number; // in tokens or character approximation
   readonly promptPosition: number; // -1 = NONE, 0 = IN_PROMPT, 1 = IN_CHAT, 2 = BEFORE_PROMPT
   readonly promptDepth: number; // insertion depth, e.g. 0 to 10000
+
+  // Safe action settings (Milestone 8)
+  readonly allowAdvancedScripts: boolean;
+  readonly confirmImportedScripts: boolean;
 }
 
 export const DEFAULT_SETTINGS: Readonly<AtlasSettings> = Object.freeze({
@@ -40,4 +44,8 @@ export const DEFAULT_SETTINGS: Readonly<AtlasSettings> = Object.freeze({
   contextSizeLimit: 300, // target budget in tokens (~1500 chars)
   promptPosition: 1, // default IN_CHAT (in chat context)
   promptDepth: 0, // default top insertion
+
+  // Advanced imported scripts are disabled unless the user opts in.
+  allowAdvancedScripts: false,
+  confirmImportedScripts: true,
 });

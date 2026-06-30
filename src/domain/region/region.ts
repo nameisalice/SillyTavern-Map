@@ -1,3 +1,5 @@
+import type { AtlasAction } from '@/domain/actions';
+
 /**
  * Region domain types.
  *
@@ -18,4 +20,5 @@ export interface AtlasRegion {
   readonly borderColor?: string;
   readonly opacity?: number;
   readonly hiddenUntilDiscovered?: boolean;
+  readonly actions?: readonly AtlasAction[];
 }

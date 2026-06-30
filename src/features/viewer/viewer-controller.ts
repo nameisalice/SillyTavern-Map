@@ -19,13 +19,14 @@ import type { AtlasLocation } from '@/domain/location';
 import type { AtlasMapDocument } from '@/domain/map';
 import type { AtlasRegion } from '@/domain/region';
 import type { AtlasRoute } from '@/domain/route';
+import type { AtlasAction } from '@/domain/actions';
 import { MapViewer, type MapViewer as MapViewerType } from './map-viewer';
 import { MarkerLayer, buildMarkerData, type MarkerLayer as MarkerLayerType } from './marker-layer';
 import { RegionLayer } from './region-layer';
 import { RouteLayer } from './route-layer';
 import {
   buildLocationDetailElement,
-  buildRegionDetailElement,
+  buildRegionDetailElementWithActions,
   buildRouteDetailElement,
 } from './tooltip-controller';
 import { logError, logInfo } from '@/core/logger';
@@ -57,6 +58,7 @@ export class ViewerController {
   private readonly showDetail: ShowLocationDetail;
   private readonly requestTravel: (locationId: string) => void;
   private readonly requestOpenChildMap: (childMapId: string) => void;
+  private readonly requestAction: (action: AtlasAction) => void;
   private readonly imageUrlOverride?: string;
   private readonly discoveredLocationIds: ReadonlySet<string>;
   private readonly discoveredRegionIds: ReadonlySet<string>;
@@ -72,6 +74,7 @@ export class ViewerController {
     showDetail: ShowLocationDetail;
     requestTravel: (locationId: string) => void;
     requestOpenChildMap: (childMapId: string) => void;
+    requestAction: (action: AtlasAction) => void;
     discoveredLocationIds: ReadonlySet<string>;
     discoveredRegionIds: ReadonlySet<string>;
     /** Repository-resolved object URL for a persistent map's image. */
@@ -85,6 +88,7 @@ export class ViewerController {
     this.showDetail = args.showDetail;
     this.requestTravel = args.requestTravel;
     this.requestOpenChildMap = args.requestOpenChildMap;
+    this.requestAction = args.requestAction;
     this.discoveredLocationIds = args.discoveredLocationIds;
     this.discoveredRegionIds = args.discoveredRegionIds;
     this.imageUrlOverride = args.imageUrlOverride;
@@ -169,6 +173,7 @@ export class ViewerController {
           isCurrent,
           () => this.requestTravel(locationId),
           location.childMapId ? () => this.requestOpenChildMap(location.childMapId!) : undefined,
+          (action) => this.requestAction(action),
         ),
         location,
       );
@@ -181,7 +186,10 @@ export class ViewerController {
     this.regions?.select(regionId);
     const region = this.document.regions.find((r) => r.id === regionId);
     if (region) {
-      void this.showDetail(buildRegionDetailElement(region), region);
+      void this.showDetail(
+        buildRegionDetailElementWithActions(region, (action) => this.requestAction(action)),
+        region,
+      );
     }
     this.eventBus.emit('RegionSelected', { regionId });
   }

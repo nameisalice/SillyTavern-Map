@@ -5,7 +5,36 @@ All notable changes to SillyTavern Atlas are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.0] — Unreleased
+## [1.0.0] — Unreleased
+
+### Added
+
+- Per-chat map and location state with travel history and route validation.
+- Spatial prompt context injection with bounded, hidden-location-safe output.
+- Modern Atlas slash commands: `/atlas`, `/atlas-map`, `/atlas-go`, `/atlas-where`,
+  `/atlas-reveal`, `/atlas-hide`, `/atlas-center`, `/atlas-library`,
+  `/atlas-import`, `/atlas-export`, `/atlas-open`, and `/atlas-back`.
+- Region and route rendering, visual region/route editing, nested map navigation, and
+  breadcrumbs.
+- Safe declarative action engine with advanced STScript disabled by default.
+- Legacy PNG + JSON importer that migrates SVG-style paths into regions and marks
+  legacy script content as untrusted.
+- Optional OpenAI-compatible text and image provider adapters, validated map blueprint
+  parsing, no-label image prompts, and provider profile contracts.
+- Exact structured automation tag parser and optional function-tool bridge that rejects
+  unknown ids and never guesses locations from prose.
+
+### Changed
+
+- Version synchronized to `1.0.0` across `package.json` and `manifest.json`.
+- README updated to describe the current release-candidate feature set and security
+  posture.
+
+### Verification
+
+- `npm run check` passes: TypeScript, ESLint, Vitest, and production Webpack build.
+
+## [0.1.0] — Historical foundation
 
 ### Added
 

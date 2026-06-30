@@ -22,7 +22,12 @@ import { EXTENSIONS_MENU_SELECTOR } from '@/constants';
 import { tryGetContext } from '@/st/context';
 import { loadSettings, saveMapIndex } from '@/st/settings-bridge';
 import { mountSettingsDrawer } from '@/ui/settings-controller';
-import { openAtlasPanel, setViewerService, setTravelService } from '@/ui/panel-controller';
+import {
+  openAtlasPanel,
+  setActionService,
+  setViewerService,
+  setTravelService,
+} from '@/ui/panel-controller';
 import { openMapLibrary } from '@/ui/map-library-controller';
 import { openEditor } from '@/ui/editor-dialog-controller';
 import { openCreateMapDialog, setCreateMapUploadService } from '@/ui/create-map-controller';
@@ -50,8 +55,10 @@ import {
   type TravelService,
   AtlasSpatialContextService,
   type SpatialContextService,
+  ActionService,
 } from '@/services';
 import { ChatStateCoordinator } from './chat-state-coordinator';
+import { createActionExecutionAdapter } from '@/st/action-bridge';
 
 /**
  * Dependency tokens for the core singletons. Declared here so any
@@ -91,6 +98,8 @@ export const ChatStateCoordinatorToken: DependencyToken<ChatStateCoordinator> =
   token<ChatStateCoordinator>('ChatStateCoordinator');
 export const ViewerServiceToken: DependencyToken<ViewerService> =
   token<ViewerService>('ViewerService');
+export const ActionServiceToken: DependencyToken<ActionService> =
+  token<ActionService>('ActionService');
 
 /** The single shared container instance for the extension lifetime. */
 let container: Container | null = null;
@@ -173,6 +182,18 @@ export function getContainer(): Container {
     () => new AtlasViewerService(eventBus, mapRepository, assetRepository),
     'singleton',
   );
+  container.register(
+    ActionServiceToken,
+    () =>
+      new ActionService(
+        createActionExecutionAdapter(
+          getContainer().resolve(TravelServiceToken),
+          getContainer().resolve(ViewerServiceToken),
+        ),
+        () => loadSettings(),
+      ),
+    'singleton',
+  );
   return container;
 }
 
@@ -203,6 +224,7 @@ export async function bootstrap(): Promise<boolean> {
   setViewerService(getContainer().resolve(ViewerServiceToken));
   setCreateMapUploadService(getContainer().resolve(ImageUploadServiceToken));
   setTravelService(getContainer().resolve(TravelServiceToken));
+  setActionService(getContainer().resolve(ActionServiceToken));
 
   // Seed the bundled map into the repository on first run if missing
   const seeder = getContainer().resolve(MapSeedingServiceToken);

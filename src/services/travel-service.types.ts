@@ -43,6 +43,9 @@ export interface TravelService {
   /** Marks a region as discovered in the active chat. */
   discoverRegion(regionId: string): Promise<void>;
 
+  /** Hides a location in the active chat. */
+  hideLocation(locationId: string): Promise<void>;
+
   /** Returns the full parsed chat state (for the UI / viewer). */
   loadChatState(): Promise<AtlasChatState>;
 

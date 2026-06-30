@@ -7,13 +7,11 @@ image, place locations by clicking, track the player's current location per chat
 nested maps (world → city → building → room), and inject concise spatial context into
 the model's generations.
 
-> **Status:** Foundation + architecture + map viewer MVP + persistence + marker editor
-> (M0 / M0.5 / M1 / M2 / M3). The build, tests, linting, and bootstrap are working; the
-> layered architecture is in place; an interactive image-map viewer with pan, zoom, and
-> markers is bundled with one example map; maps persist to browser-local storage; and a
-> visual marker editor with Create Map, click-to-add, drag, undo/redo, preview, and
-> save-through-repository is available from the Atlas Library. Per-chat location, prompt
-> injection, and AI generation arrive in later milestones.
+> **Status:** v1.0 release candidate. The core viewer, local map library, visual
+> editor, per-chat travel state, prompt context, slash commands, regions, routes,
+> nested maps, safe actions, legacy import, optional provider infrastructure, and
+> controlled automation layers are implemented and covered by the automated check
+> suite.
 
 This project is a rework of the original proof-of-concept
 [`Elthial/SillyTavern-Map`](https://github.com/Elthial/SillyTavern-Map), which remains
@@ -105,6 +103,8 @@ To test a local build inside a running SillyTavern:
    marker (Mournwood Gate) is visually distinct, and the toolbar buttons
    (Fit / Center / Zoom in / Zoom out) work. Resizing to a narrow width switches the
    panel to a fullscreen layout.
+6. Open **Atlas Library** to create/import/export maps, edit markers/regions/routes,
+   and test per-chat travel state through `/atlas-where` and `/atlas-go`.
 
 ## Architecture
 
@@ -292,17 +292,18 @@ Milestone 2 establishes the persistent data model and repository layer:
   imports never overwrite existing maps automatically; asset deduplication is by
   checksum.
 
-### Future provider architecture
+### Optional provider architecture
 
 AI-assisted generation is **always optional**. The provider layer defines two
 independent abstractions so the roleplay model, the map-planning text model, and the
 image model are never coupled:
 
-- **TextProvider** — produces a validated map blueprint (structured JSON). Future
-  implementations: SillyTavern main API, custom OpenAI-compatible.
+- **TextProvider** — produces a validated map blueprint (structured JSON). The
+  OpenAI-compatible adapter validates returned blueprint JSON before it can become a
+  draft.
 - **ImageProvider** — produces an unlabeled background image. Atlas remains the source
-  of truth for labels, markers, and routes. Future implementations: SillyTavern image
-  integration, OpenAI-compatible images, async task/polling, generic REST.
+  of truth for labels, markers, and routes. The OpenAI-compatible image adapter
+  appends no-label/no-marker constraints to every prompt.
 - **Storage providers** — `AssetStore` (binary blobs via localforage) and
   `MapDocumentStore` (versioned map documents), swappable for an optional server-storage
   adapter later.
@@ -311,10 +312,18 @@ Provider-specific behavior stays inside the adapter layer. Map-domain code depen
 on the interfaces. Credentials are never stored in maps, chat metadata, exports, logs,
 or diagnostics, and never embedded in the JavaScript bundle.
 
+### Automation and safe actions
+
+Atlas exposes controlled automation only through exact structured tags and optional
+function tools. It never guesses a location from ordinary prose. Unknown map and
+location ids are rejected, route validation is enforced by default, and hidden locations
+are not listed back to the model. Declarative map actions are safe by default; raw
+STScript remains disabled unless the user explicitly enables advanced scripts.
+
 ### Manifest notes
 
 `manifest.json` references `dist/index.js` and `dist/style.css`, sets
-`loading_order: 9` (extensions load in ascending order), `version: 0.1.0`, and
+`loading_order: 9` (extensions load in ascending order), `version: 1.0.0`, and
 `homePage` to this repository. `requires` is empty — the core extension needs no other
 extension and no server plugin.
 

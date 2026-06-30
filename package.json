@@ -1,6 +1,6 @@
 {
   "name": "sillytavern-atlas",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "SillyTavern Atlas — a lightweight interactive map extension for SillyTavern.",
   "license": "MIT",
   "author": "Atlas contributors",
