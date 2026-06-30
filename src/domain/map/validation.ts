@@ -127,11 +127,55 @@ export function validateMapDocument(value: unknown): ValidationResult {
       const to = route['toLocationId'];
       if (typeof from !== 'string' || !locationIds.has(from)) {
         errors.push(
-          error(`${path}.fromLocationId`, 'Route fromLocationId must reference a location.'),
+          error(`${path}.fromLocationId`, 'Route fromLocationId must reference an existing location.'),
         );
       }
       if (typeof to !== 'string' || !locationIds.has(to)) {
-        errors.push(error(`${path}.toLocationId`, 'Route toLocationId must reference a location.'));
+        errors.push(error(`${path}.toLocationId`, 'Route toLocationId must reference an existing location.'));
+      }
+
+      // M7 route validations
+      if (route['distance'] !== undefined) {
+        const dist = route['distance'];
+        if (!finiteNumber(dist) || dist < 0) {
+          errors.push(error(`${path}.distance`, 'Route distance must be non-negative.'));
+        }
+      }
+      const distanceUnit = route['distanceUnit'];
+      if (distanceUnit !== undefined && !['m', 'km', 'mi', 'day', 'hour'].includes(distanceUnit as string)) {
+        errors.push(error(`${path}.distanceUnit`, 'Invalid distance unit.'));
+      }
+      const timeUnit = route['travelTimeUnit'];
+      if (timeUnit !== undefined && !['minute', 'hour', 'day'].includes(timeUnit as string)) {
+        errors.push(error(`${path}.travelTimeUnit`, 'Invalid travel time unit.'));
+      }
+      if (route['travelTime'] !== undefined) {
+        const time = route['travelTime'];
+        if (!finiteNumber(time) || time < 0) {
+          errors.push(error(`${path}.travelTime`, 'Route travel time must be non-negative.'));
+        }
+      }
+      const routePoints = route['points'];
+      if (routePoints !== undefined) {
+        if (!Array.isArray(routePoints)) {
+          errors.push(error(`${path}.points`, 'Route points must be an array.'));
+        } else {
+          routePoints.forEach((pt, ptIndex) => {
+            const ptPath = `${path}.points[${ptIndex}]`;
+            if (!Array.isArray(pt) || pt.length !== 2) {
+              errors.push(error(ptPath, 'Route point must be an [x, y] coordinate pair.'));
+            } else {
+              const rx = pt[0];
+              const ry = pt[1];
+              if (!finiteNumber(rx) || rx < 0 || rx > 100) {
+                errors.push(error(`${ptPath}[0]`, 'x must be finite and between 0 and 100.'));
+              }
+              if (!finiteNumber(ry) || ry < 0 || ry > 100) {
+                errors.push(error(`${ptPath}[1]`, 'y must be finite and between 0 and 100.'));
+              }
+            }
+          });
+        }
       }
     });
   }
@@ -155,8 +199,43 @@ export function validateMapDocument(value: unknown): ValidationResult {
       } else {
         regionIds.add(id);
       }
-      if (!Array.isArray(region['polygon'])) {
+      const poly = region['polygon'];
+      if (!Array.isArray(poly)) {
         errors.push(error(`${path}.polygon`, 'Region polygon must be an array.'));
+      } else if (poly.length < 3) {
+        errors.push(error(`${path}.polygon`, 'Region polygon must have at least 3 points.'));
+      } else {
+        poly.forEach((pt, ptIndex) => {
+          const ptPath = `${path}.polygon[${ptIndex}]`;
+          if (!Array.isArray(pt) || pt.length !== 2) {
+            errors.push(error(ptPath, 'Polygon vertex must be an [x, y] pair.'));
+          } else {
+            const rx = pt[0];
+            const ry = pt[1];
+            if (!finiteNumber(rx) || rx < 0 || rx > 100) {
+              errors.push(error(`${ptPath}[0]`, 'x must be finite and between 0 and 100.'));
+            }
+            if (!finiteNumber(ry) || ry < 0 || ry > 100) {
+              errors.push(error(`${ptPath}[1]`, 'y must be finite and between 0 and 100.'));
+            }
+          }
+        });
+      }
+    });
+  }
+
+  // Circular Direct Nesting checks (M7)
+  const mapId = value['id'];
+  const parentMapId = value['parentMapId'];
+  if (parentMapId !== undefined && parentMapId === mapId) {
+    errors.push(error('parentMapId', 'Direct circular reference: parentMapId cannot equal map id.'));
+  }
+
+  if (locations) {
+    locations.forEach((loc, index) => {
+      const childMapId = loc['childMapId'];
+      if (childMapId !== undefined && childMapId === mapId) {
+        errors.push(error(`locations[${index}].childMapId`, 'Direct circular reference: childMapId cannot equal map id.'));
       }
     });
   }

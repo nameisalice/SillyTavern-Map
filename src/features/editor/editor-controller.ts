@@ -1,31 +1,26 @@
 /**
- * Editor controller: orchestrates the visual marker editor.
+ * Editor controller: visual Marker, Region, and Route editor orchestration.
  *
- * Composes focused modules rather than being a God class:
- *  - `EditorSession` owns the working document, history, selection.
- *  - `MapViewer` owns the Leaflet map surface.
- *  - `MarkerLayer` (viewer's) renders markers; the editor toggles drag.
- *  - `PropertyPanel` renders the location form.
- *  - `MapDraftService` persists on Save.
- *
- * Host interaction (popups) is injected via callbacks so the editor
- * feature stays free of host-adapter imports.
+ * Implements click-to-add locations, click-to-add region polygons with vertex
+ * drag handles, and connection route paths, safely complying with all
+ * architecture and security rules.
  */
 
-import type L from 'leaflet';
+import L from 'leaflet';
 import type { AtlasMapDocument } from '@/domain/map';
 import { MapViewer } from '@/features/viewer/map-viewer';
 import { MarkerLayer, buildMarkerData } from '@/features/viewer/marker-layer';
+import { RegionLayer } from '@/features/viewer/region-layer';
+import { RouteLayer } from '@/features/viewer/route-layer';
 import { PropertyPanel, type PropertyPanelValues } from './property-panel';
 import { EditorSession } from './editor-session';
-import { type AddMarkerInput } from './marker-editor';
-import { latLngToNormalized } from './coordinate-utils';
+import { type EditorSubMode } from './editor-state';
+import { latLngToNormalized, normalizedToLatLng } from './coordinate-utils';
 import { validateMapDocument, type ValidationResult } from '@/domain/map';
 import type { MapDraftService } from '@/services/map-draft-service';
 import type { EventBus } from '@/core/events';
 import { logError, logInfo } from '@/core/logger';
 
-/** Toolbar commands the editor surfaces to its host. */
 export interface EditorToolbar {
   readonly onUndo: () => void;
   readonly onRedo: () => void;
@@ -33,23 +28,25 @@ export interface EditorToolbar {
   readonly onTogglePreview: () => void;
   readonly onExit: () => void;
   readonly onAddLocation: () => void;
+  readonly onChangeSubMode: (subMode: EditorSubMode) => void;
 }
 
-/** Creates the toolbar wiring for a freshly-mounted editor. */
 type ToolbarBinder = (commands: EditorToolbar) => void;
 
-/** Shows a confirmation/info popup; returns the chosen action. */
 export type EditorPopup = (
   content: HTMLElement | string,
   type: 'confirm' | 'text',
 ) => Promise<number>;
 
-/** Notified after a successful save. */
 export type OnSavedCallback = (document: AtlasMapDocument) => void;
 
 export class EditorController {
   private viewer: MapViewer | null = null;
   private markers: MarkerLayer | null = null;
+  private regions: RegionLayer | null = null;
+  private routes: RouteLayer | null = null;
+  private vertexMarkers: L.Marker[] = [];
+  private vertexGroup: L.LayerGroup | null = null;
   private readonly session: EditorSession;
   private readonly panel: PropertyPanel;
   private readonly container: HTMLElement;
@@ -62,6 +59,7 @@ export class EditorController {
   private readonly onExit: () => void;
   private readonly imageUrlOverride?: string;
   private addingLocation = false;
+  private routeOriginId: string | null = null;
 
   constructor(args: {
     container: HTMLElement;
@@ -89,14 +87,16 @@ export class EditorController {
     this.session.subscribe(() => this.render());
   }
 
-  /** Initializes the editor and emits EditorOpened. */
   open(): void {
     this.viewer = new MapViewer(this.container, this.session.getDocument(), this.imageUrlOverride);
     this.viewer.init();
     const map = this.viewer.getLeafletMap();
     const dims = this.viewer.getDimensions();
     if (map) {
-      this.markers = new MarkerLayer(map, dims, (locationId) => this.onMarkerClick(locationId));
+      this.vertexGroup = L.layerGroup().addTo(map);
+      this.markers = new MarkerLayer(map, dims, (id) => this.onMarkerClick(id));
+      this.regions = new RegionLayer(map, dims, (id) => this.onRegionClick(id));
+      this.routes = new RouteLayer(map, dims, (id) => this.onRouteClick(id));
       map.on('click', (event) => this.onMapClick(event));
     }
     this.bindToolbar({
@@ -106,6 +106,7 @@ export class EditorController {
       onTogglePreview: () => this.togglePreview(),
       onExit: () => void this.exit(),
       onAddLocation: () => this.beginAddLocation(),
+      onChangeSubMode: (subMode) => this.session.setSubMode(subMode),
     });
     this.render();
     this.viewer.invalidateSize();
@@ -113,10 +114,15 @@ export class EditorController {
     logInfo('Editor opened.');
   }
 
-  /** Disposes the editor and releases listeners. */
   dispose(): void {
+    this.clearVertexMarkers();
+    this.vertexGroup?.remove();
     this.markers?.dispose();
     this.markers = null;
+    this.regions?.dispose();
+    this.regions = null;
+    this.routes?.dispose();
+    this.routes = null;
     this.viewer?.dispose();
     this.viewer = null;
     this.session.dispose();
@@ -124,12 +130,10 @@ export class EditorController {
     logInfo('Editor closed.');
   }
 
-  /** Returns true if there are unsaved changes. */
   isDirty(): boolean {
     return this.session.isDirty();
   }
 
-  /** Toggles between edit and preview mode. */
   togglePreview(): void {
     const next = this.session.getMode() === 'edit' ? 'preview' : 'edit';
     this.session.setMode(next);
@@ -139,16 +143,17 @@ export class EditorController {
     });
   }
 
-  /** Begins click-to-add mode. */
   beginAddLocation(): void {
     if (this.session.getMode() !== 'edit') {
       return;
     }
-    this.addingLocation = true;
-    this.container.classList.add('st-atlas__canvas--placing');
+    const subMode = this.session.getState().subMode;
+    if (subMode === 'marker' || subMode === 'region') {
+      this.addingLocation = true;
+      this.container.classList.add('st-atlas__canvas--placing');
+    }
   }
 
-  /** Validates and saves the working document through MapDraftService. */
   async save(): Promise<void> {
     const document = this.session.getDocument();
     const validation = validateMapDocument(document);
@@ -164,11 +169,10 @@ export class EditorController {
       await this.popup('Map saved to the library.', 'text');
     } catch (error) {
       logError('Failed to save map.', error);
-      await this.popup(`Could not save the map: ${stringifyError(error)}`, 'text');
+      await this.popup(`Could not save the map: ${error instanceof Error ? error.message : String(error)}`, 'text');
     }
   }
 
-  /** Exits the editor, prompting to save if dirty. */
   async exit(): Promise<void> {
     if (this.session.isDirty()) {
       const choice = await this.confirmUnsaved();
@@ -185,51 +189,112 @@ export class EditorController {
         await this.draftService.save(document);
       }
     }
-    this.dispose();
     this.onExit();
+    this.dispose();
   }
 
-  /** Renders markers + property panel from the current session state. */
   private render(): void {
     const state = this.session.getState();
     const document = state.document;
     this.eventBus.emit('MapDraftChanged', { mapId: document.id, isDirty: state.isDirty });
 
+    this.clearVertexMarkers();
+
+    // Determine submode and selections
+    const isEditMode = state.mode === 'edit';
+    const subMode = state.subMode;
+
     if (this.markers) {
-      const currentId = state.selectedLocationId ?? document.defaultLocationId;
-      this.markers.render(buildMarkerData(document, currentId ?? null, new Set()));
-      this.updateDraggability();
+      const currentLocId =
+        state.selectedType === 'location' ? state.selectedItemId : undefined;
+      this.markers.render(buildMarkerData(document, currentLocId ?? null, new Set()));
+      const draggable = isEditMode && subMode === 'marker';
+      this.markers.setDraggable(draggable, (id, lat, lng) => this.onMarkerDragEnd(id, lat, lng));
     }
 
-    const selected = state.selectedLocationId
-      ? this.session.findLocation(state.selectedLocationId)
-      : null;
-    const isDefault = state.selectedLocationId === document.defaultLocationId;
-    this.panel.render(selected, isDefault);
+    if (this.regions) {
+      this.regions.render(document.regions || [], new Set(document.regions.map((r) => r.id)));
+      if (state.selectedType === 'region' && state.selectedItemId) {
+        this.regions.select(state.selectedItemId);
+        if (isEditMode) {
+          this.renderRegionDragHandles(state.selectedItemId);
+        }
+      } else {
+        this.regions.clearSelection();
+      }
+    }
+
+    if (this.routes) {
+      this.routes.render(document.routes || [], document.locations);
+      if (state.selectedType === 'route' && state.selectedItemId) {
+        this.routes.select(state.selectedItemId);
+      } else {
+        this.routes.clearSelection();
+      }
+    }
+
+    // Render property panels
+    if (state.selectedItemId) {
+      if (state.selectedType === 'location') {
+        const selected = this.session.findLocation(state.selectedItemId);
+        const isDefault = state.selectedItemId === document.defaultLocationId;
+        this.panel.renderLocation(selected, isDefault);
+      } else if (state.selectedType === 'region') {
+        const selected = this.session.findRegion(state.selectedItemId);
+        this.panel.renderRegion(selected);
+      } else if (state.selectedType === 'route') {
+        const selected = this.session.findRoute(state.selectedItemId);
+        this.panel.renderRoute(selected);
+      }
+    } else {
+      this.panel.clear();
+    }
   }
 
-  /** Enables/disables marker dragging based on the editor mode. */
-  private updateDraggability(): void {
-    if (!this.markers) {
+  private onMarkerClick(locationId: string): void {
+    const state = this.session.getState();
+    if (state.mode === 'edit' && state.subMode === 'route') {
+      // Connect routes
+      if (!this.routeOriginId) {
+        this.routeOriginId = locationId;
+        this.popup(`Origin set: "${locationId}". Click target marker to connect.`, 'text');
+      } else {
+        if (this.routeOriginId === locationId) {
+          this.routeOriginId = null;
+          this.popup('Route origin cleared.', 'text');
+          return;
+        }
+        try {
+          const routeId = this.session.addRouteOp({
+            fromLocationId: this.routeOriginId,
+            toLocationId: locationId,
+            bidirectional: true,
+          });
+          this.session.selectItem(routeId, 'route');
+          this.routeOriginId = null;
+        } catch (error) {
+          this.popup(`Could not connect locations: ${error instanceof Error ? error.message : String(error)}`, 'text');
+        }
+      }
+    } else {
+      this.session.selectItem(locationId, 'location');
+    }
+  }
+
+  private onRegionClick(regionId: string): void {
+    if (this.session.getMode() === 'edit' && this.session.getState().subMode !== 'region') {
       return;
     }
-    const draggable = this.session.getMode() === 'edit';
-    // MarkerLayer exposes the underlying L.Marker map via private field;
-    // we re-render with drag options by clearing and rebuilding is not
-    // needed — Leaflet markers can be toggled through the layer.
-    this.markers.setDraggable(draggable, (id, lat, lng) => this.onMarkerDragEnd(id, lat, lng));
+    this.session.selectItem(regionId, 'region');
   }
 
-  /** Handles a marker click: select + open property panel. */
-  private onMarkerClick(locationId: string): void {
-    this.session.selectLocation(locationId);
-    this.eventBus.emit('EditorLocationSelected', {
-      mapId: this.session.getDocument().id,
-      locationId,
-    });
+  private onRouteClick(routeId: string): void {
+    if (this.session.getMode() === 'edit' && this.session.getState().subMode !== 'route') {
+      return;
+    }
+    this.session.selectItem(routeId, 'route');
   }
 
-  /** Handles a map click in add-location mode. */
   private onMapClick(event: L.LeafletMouseEvent): void {
     if (!this.addingLocation || !this.viewer) {
       return;
@@ -237,19 +302,29 @@ export class EditorController {
     this.addingLocation = false;
     this.container.classList.remove('st-atlas__canvas--placing');
     const dims = this.viewer.getDimensions();
-    const { x, y } = latLngToNormalized(
-      event.latlng.lat,
-      event.latlng.lng,
-      dims.width,
-      dims.height,
-    );
-    const name = `Location ${this.session.getDocument().locations.length + 1}`;
-    const input: AddMarkerInput = { name, x, y };
-    const id = this.session.addMarkerOp(input);
-    this.session.selectLocation(id);
+    const { x, y } = latLngToNormalized(event.latlng.lat, event.latlng.lng, dims.width, dims.height);
+
+    const subMode = this.session.getState().subMode;
+    if (subMode === 'marker') {
+      const name = `Location ${this.session.getDocument().locations.length + 1}`;
+      const id = this.session.addMarkerOp({ name, x, y });
+      this.session.selectItem(id, 'location');
+    } else if (subMode === 'region') {
+      // For Milestone 7 drawing polygons: click seeds a default triangle at click coordinates,
+      // and opens the vertex drag handles immediately.
+      const name = `Region ${this.session.getDocument().regions.length + 1}`;
+      const id = this.session.addRegionOp({
+        name,
+        polygon: [
+          [x, y],
+          [x + 4, y],
+          [x, y + 6],
+        ],
+      });
+      this.session.selectItem(id, 'region');
+    }
   }
 
-  /** Handles a completed marker drag: one history entry per drag. */
   private onMarkerDragEnd(locationId: string, lat: number, lng: number): void {
     if (!this.viewer) {
       return;
@@ -259,31 +334,144 @@ export class EditorController {
     this.session.moveMarkerOp(locationId, x, y);
   }
 
-  /** Collects property-panel edits and applies them as one history entry. */
   private onPropertyChange(values: PropertyPanelValues): void {
-    const id = this.session.getSelectedLocationId();
+    const id = this.session.getSelectedItemId();
     if (!id) {
       return;
     }
-    this.session.editMarkerOp(id, {
-      name: values.name,
-      description: values.description,
-      category: values.category,
-      icon: values.icon,
-      dangerLevel: values.dangerLevel,
-      aliases: values.aliases,
-      worldInfoKeywords: values.worldInfoKeywords,
-      hiddenUntilDiscovered: values.hiddenUntilDiscovered,
-      discoveredByDefault: values.discoveredByDefault,
-    });
-    if (values.isDefault) {
-      this.session.setDefaultLocationOp(id);
-    } else if (this.session.getDocument().defaultLocationId === id) {
-      this.session.setDefaultLocationOp(undefined);
+
+    if (values.type === 'location' && values.location) {
+      const v = values.location;
+      this.session.editMarkerOp(id, {
+        name: v.name,
+        description: v.description,
+        category: v.category,
+        icon: v.icon,
+        dangerLevel: v.dangerLevel,
+        aliases: v.aliases,
+        worldInfoKeywords: v.worldInfoKeywords,
+        hiddenUntilDiscovered: v.hiddenUntilDiscovered,
+        discoveredByDefault: v.discoveredByDefault,
+        childMapId: v.childMapId,
+      });
+      if (v.isDefault) {
+        this.session.setDefaultLocationOp(id);
+      } else if (this.session.getDocument().defaultLocationId === id) {
+        this.session.setDefaultLocationOp(undefined);
+      }
+    } else if (values.type === 'region' && values.region) {
+      const v = values.region;
+      this.session.editRegionOp(id, {
+        name: v.name,
+        description: v.description,
+        fillColor: v.fillColor,
+        borderColor: v.borderColor,
+        opacity: v.opacity,
+        hiddenUntilDiscovered: v.hiddenUntilDiscovered,
+      });
+    } else if (values.type === 'route' && values.route) {
+      const v = values.route;
+      this.session.editRouteOp(id, {
+        name: v.name,
+        bidirectional: v.bidirectional,
+        distance: v.distance,
+        distanceUnit: v.distanceUnit,
+        travelTime: v.travelTime,
+        travelTimeUnit: v.travelTimeUnit,
+        dangerLevel: v.dangerLevel,
+        locked: v.locked,
+        requirements: v.requirements,
+      });
     }
   }
 
-  /** Shows validation errors as a popup listing every problem. */
+  /** Render handles for moving, adding or removing points of the active region. */
+  private renderRegionDragHandles(regionId: string): void {
+    const region = this.session.findRegion(regionId);
+    if (!region || !this.viewer || !this.vertexGroup) {
+      return;
+    }
+    const map = this.viewer.getLeafletMap();
+    if (!map) {
+      return;
+    }
+    const { width, height } = this.viewer.getDimensions();
+
+    region.polygon.forEach((pt, index) => {
+      const latLng = normalizedToLatLng(pt[0], pt[1], width, height);
+
+      // Create a small colored marker per point
+      const marker = L.marker(latLng, {
+        icon: L.divIcon({
+          className: 'st-atlas__vertex-handle',
+          html: `<span class="st-atlas__vertex-dot" title="Drag to move vertex. Right-click to remove.">${index + 1}</span>`,
+          iconSize: [16, 16],
+          iconAnchor: [8, 8],
+        }),
+        draggable: true,
+      });
+
+      // Point drag handles updates coordinates
+      marker.on('dragend', () => {
+        const { lat, lng } = marker.getLatLng();
+        const norm = latLngToNormalized(lat, lng, width, height);
+        this.session.moveRegionPointOp(regionId, index, norm.x, norm.y);
+      });
+
+      // Context menu or alt click removes point (requires poly length > 3)
+      marker.on('contextmenu', (e) => {
+        L.DomEvent.preventDefault(e.originalEvent);
+        if (region.polygon.length <= 3) {
+          this.popup('A region polygon cannot have less than 3 points.', 'text');
+          return;
+        }
+        this.session.removeRegionPointOp(regionId, index);
+      });
+
+      marker.addTo(this.vertexGroup!);
+      this.vertexMarkers.push(marker);
+    });
+
+    // Helper text in properties card
+    const hint = document.createElement('div');
+    hint.className = 'st-atlas__property-row';
+    const label = document.createElement('span');
+    label.className = 'st-atlas__property-label';
+    label.textContent = 'Vertex Operations';
+    const desc = document.createElement('span');
+    desc.className = 'st-atlas__property-empty';
+    desc.textContent = 'Drag numbered vertices on the map to modify coordinates. Right-click vertex dot to remove. Click "Add Point" button below to append point to the end.';
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'menu_button st-atlas__property-input';
+    btn.textContent = 'Add Point';
+    btn.addEventListener('click', () => {
+      // Append point next to first point offset
+      const first = region.polygon[0];
+      this.session.addRegionPointOp(regionId, first[0] + 3, first[1] + 3);
+    });
+
+    const delBtn = document.createElement('button');
+    delBtn.type = 'button';
+    delBtn.className = 'menu_button st-atlas__property-input st-atlas__library-btn--danger';
+    delBtn.textContent = 'Delete Region';
+    delBtn.addEventListener('click', async () => {
+      const choice = await this.popup(`Delete region "${region.name}"?`, 'confirm');
+      if (choice === 1) {
+        this.session.deleteRegionOp(regionId);
+      }
+    });
+
+    hint.append(label, desc, btn, delBtn);
+    this.propertyHost.append(hint);
+  }
+
+  private clearVertexMarkers(): void {
+    this.vertexGroup?.clearLayers();
+    this.vertexMarkers = [];
+  }
+
   private async showValidationErrors(validation: ValidationResult): Promise<void> {
     const list = document.createElement('ul');
     list.className = 'st-atlas__validation-list';
@@ -299,11 +487,9 @@ export class EditorController {
     await this.popup(container, 'text');
   }
 
-  /** Prompts the user to save, discard, or cancel. */
   private async confirmUnsaved(): Promise<'save' | 'discard' | 'cancel'> {
     const message = 'You have unsaved changes. Save before continuing?';
     const result = await this.popup(message, 'confirm');
-    // POPUP_RESULT.AFFIRMATIVE === 1, CANCEL === 0 (host convention).
     if (result === 1) {
       return 'save';
     }
@@ -312,12 +498,4 @@ export class EditorController {
     }
     return 'discard';
   }
-}
-
-/** Stringifies an unknown error into a readable message. */
-function stringifyError(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return String(error);
 }

@@ -47,15 +47,78 @@ export function setViewerService(service: ViewerService): void {
   const bus = service.getEventBus();
   bus.subscribe('ChatAtlasStateLoaded', () => {
     updateLocationBadge();
+    void updateBreadcrumbs();
     void reloadViewer();
   });
   bus.subscribe('ActiveMapChanged', () => {
     updateLocationBadge();
+    void updateBreadcrumbs();
     void reloadViewer();
   });
   bus.subscribe('LocationChanged', () => {
     updateLocationBadge();
+    void updateBreadcrumbs();
     void reloadViewer();
+  });
+}
+
+/** Rebuilds the breadcrumb hierarchy path. textContent safe. */
+export async function updateBreadcrumbs(): Promise<void> {
+  const container = panelRoot?.querySelector<HTMLElement>('[data-st-atlas="breadcrumbs"]');
+  if (!container || !viewerService || !travelService) {
+    return;
+  }
+  container.replaceChildren();
+
+  const activeMap = viewerService.getActiveMap();
+  if (!activeMap) {
+    return;
+  }
+
+  const chain: { id: string; name: string }[] = [];
+  chain.push({ id: activeMap.id, name: activeMap.name });
+
+  let current = activeMap;
+  const visited = new Set<string>([activeMap.id]);
+
+  while (current.parentMapId && !visited.has(current.parentMapId)) {
+    const parentId = current.parentMapId;
+    visited.add(parentId);
+    const parentMap = await travelService.loadMapDocument(parentId);
+    if (!parentMap) {
+      break;
+    }
+    chain.push({ id: parentMap.id, name: parentMap.name });
+    current = parentMap;
+  }
+
+  chain.reverse();
+
+  chain.forEach((node, index) => {
+    if (index > 0) {
+      const sep = document.createElement('span');
+      sep.className = 'st-atlas__breadcrumb-separator';
+      sep.textContent = ' > ';
+      container.append(sep);
+    }
+
+    const isLast = index === chain.length - 1;
+    if (isLast) {
+      const active = document.createElement('span');
+      active.className = 'st-atlas__breadcrumb st-atlas__breadcrumb--active';
+      active.textContent = node.name;
+      container.append(active);
+    } else {
+      const link = document.createElement('a');
+      link.href = '#';
+      link.className = 'st-atlas__breadcrumb st-atlas__breadcrumb--link';
+      link.textContent = node.name;
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        void travelService?.setActiveMapId(node.id);
+      });
+      container.append(link);
+    }
   });
 }
 
@@ -180,12 +243,6 @@ function wirePanelControls(root: HTMLElement): void {
  * Runs once; subsequent calls are no-ops (the viewer instance is reused
  * across reopens — no listener duplication).
  */
-/**
- * Mounts the viewer into the panel canvas, constructing the
- * `ViewerController` with dependencies injected from the service.
- * Runs once; subsequent calls are no-ops (the viewer instance is reused
- * across reopens — no listener duplication).
- */
 async function mountViewer(): Promise<void> {
   if (viewerController || !panelRoot || !viewerService) {
     return;
@@ -201,6 +258,7 @@ async function mountViewer(): Promise<void> {
     const currentLocId = travelService?.getCurrentLocationId() ?? undefined;
     const chatState = await travelService?.loadChatState();
     const discoveredLocationIds = new Set(chatState?.discoveredLocationIds ?? []);
+    const discoveredRegionIds = new Set(chatState?.discoveredRegionIds ?? []);
 
     const resolved = activeMapId
       ? await service.loadMap(activeMapId)
@@ -214,13 +272,32 @@ async function mountViewer(): Promise<void> {
       bindToolbar: (commands: ViewerToolbar) => bindToolbar(commands),
       showDetail: (element) => service.showLocationDetail(element),
       requestTravel: (locationId) => void handleTravel(locationId),
+      requestOpenChildMap: (childMapId) => void handleOpenChildMap(childMapId),
       discoveredLocationIds,
+      discoveredRegionIds,
       currentLocationId: currentLocId,
     });
     viewerController.open();
     updateLocationBadge();
+    void updateBreadcrumbs();
   } catch (error) {
     logError('Failed to mount map viewer.', error);
+  }
+}
+
+/** Handles child map requests by launching it in travelService map position. */
+async function handleOpenChildMap(childMapId: string): Promise<void> {
+  if (!travelService) {
+    return;
+  }
+  try {
+    await travelService.setActiveMapId(childMapId);
+  } catch (error) {
+    const context = getContext();
+    await context.callGenericPopup(
+      `Could not open child map: ${error instanceof Error ? error.message : String(error)}`,
+      context.POPUP_TYPE.TEXT,
+    );
   }
 }
 
@@ -330,6 +407,10 @@ function toolbarHandler(action: string | null, commands: ViewerToolbar): (() => 
       return () => commands.onZoomIn();
     case 'zoom-out':
       return () => commands.onZoomOut();
+    case 'toggle-regions':
+      return () => commands.onToggleRegions?.();
+    case 'toggle-routes':
+      return () => commands.onToggleRoutes?.();
     default:
       return null;
   }

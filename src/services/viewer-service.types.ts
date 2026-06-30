@@ -16,6 +16,8 @@ export interface ViewerToolbar {
   readonly onCenter: () => void;
   readonly onZoomIn: () => void;
   readonly onZoomOut: () => void;
+  readonly onToggleRegions?: () => void;
+  readonly onToggleRoutes?: () => void;
 }
 
 /** A resolved image for a map document. */

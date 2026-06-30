@@ -32,7 +32,7 @@ import { openCreateMapDialog } from '@/ui/create-map-controller';
 let commandsRegistered = false;
 
 /** Resets the commands registration lock. Test-only hook. */
-export function resetCommandsRegistered(): void {
+export function testOnlyResetCommandsRegistered(): void {
   commandsRegistered = false;
 }
 
@@ -454,6 +454,101 @@ export function registerSlashCommands(args: {
             return `Map exported: ${map.name}`;
           } catch (err) {
             logError('Command /atlas-export failed.', err);
+            return `Atlas error: ${err instanceof Error ? err.message : String(err)}`;
+          }
+        },
+      }),
+    );
+
+    // 11. /atlas-open
+    SlashCommandParser.addCommandObject(
+      SlashCommand.fromProps({
+        name: 'atlas-open',
+        helpString: 'Open the child map of the specified location.',
+        returns: 'Result status',
+        namedArgumentList: [
+          SlashCommandNamedArgument.fromProps({
+            name: 'location',
+            description: 'Location ID or name',
+            typeList: [ARGUMENT_TYPE.STRING],
+            isRequired: true,
+            enumProvider: getLocationOptions,
+          }),
+        ],
+        callback: async (named: Record<string, string>) => {
+          try {
+            const locQuery = named['location']?.trim();
+            if (!locQuery) {
+              return 'Atlas error: Location argument is required';
+            }
+
+            const chatState = await args.travel.loadChatState();
+            const mapId = chatState.activeMapId;
+            if (!mapId) {
+              return 'Atlas error: No active map set for this chat';
+            }
+
+            const map = await args.maps.load(mapId);
+            if (!map) {
+              return `Atlas error: Active map "${mapId}" not found`;
+            }
+
+            const location = resolveLocation(locQuery, map, chatState.discoveredLocationIds);
+            if (!location.childMapId) {
+              return `Atlas error: Location "${location.name}" has no child map.`;
+            }
+
+            // check if child map exists
+            const childExists = await args.maps.exists(location.childMapId);
+            if (!childExists) {
+              return `Atlas error: Child map "${location.childMapId}" is missing from the library.`;
+            }
+
+            await args.travel.setActiveMapId(location.childMapId);
+            await args.viewer.loadMap(location.childMapId);
+            openAtlasPanel();
+            args.eventBus.emit('ChildMapOpened', { childMapId: location.childMapId });
+            return `Opened child map: ${location.name}`;
+          } catch (err) {
+            logError('Command /atlas-open failed.', err);
+            return `Atlas error: ${err instanceof Error ? err.message : String(err)}`;
+          }
+        },
+      }),
+    );
+
+    // 12. /atlas-back
+    SlashCommandParser.addCommandObject(
+      SlashCommand.fromProps({
+        name: 'atlas-back',
+        helpString: 'Return to the parent map.',
+        returns: 'Result status',
+        callback: async () => {
+          try {
+            const chatState = await args.travel.loadChatState();
+            const mapId = chatState.activeMapId;
+            if (!mapId) {
+              return 'Atlas error: No active map set';
+            }
+
+            const map = await args.maps.load(mapId);
+            if (!map || !map.parentMapId) {
+              return 'Atlas error: No parent map for this map';
+            }
+
+            const parentId = map.parentMapId;
+            const parentExists = await args.maps.exists(parentId);
+            if (!parentExists) {
+              return `Atlas error: Parent map "${parentId}" is missing from the library.`;
+            }
+
+            await args.travel.setActiveMapId(parentId);
+            await args.viewer.loadMap(parentId);
+            openAtlasPanel();
+            args.eventBus.emit('ParentMapOpened', { parentMapId: parentId });
+            return 'Returned to parent map';
+          } catch (err) {
+            logError('Command /atlas-back failed.', err);
             return `Atlas error: ${err instanceof Error ? err.message : String(err)}`;
           }
         },

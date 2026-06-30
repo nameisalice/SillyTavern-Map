@@ -98,6 +98,43 @@ export class AtlasSpatialContextService implements SpatialContextService {
       }
     }
 
+    // M7: Active hierarchy stack tracing
+    const hierarchy: string[] = [];
+    let curr = map;
+    const visited = new Set<string>([map.id]);
+    while (curr.parentMapId && !visited.has(curr.parentMapId)) {
+      const parentId = curr.parentMapId;
+      visited.add(parentId);
+      const parent = await this.maps.load(parentId);
+      if (!parent) {
+        break;
+      }
+      hierarchy.push(parent.name);
+      curr = parent;
+    }
+    hierarchy.reverse();
+
+    const hierarchyLine =
+      hierarchy.length > 0
+        ? `Map hierarchy: ${hierarchy.map((n) => escapeText(n)).join(' > ')} > ${escapeText(
+            map.name,
+          )}`
+        : undefined;
+
+    // M7: Discovered region containment check
+    let regionLine: string | undefined;
+    if (map.regions && map.regions.length > 0) {
+      const discoveredRegions = new Set(chatState.discoveredRegionIds);
+      const insideRegion = map.regions.find(
+        (r) =>
+          discoveredRegions.has(r.id) &&
+          isPointInPolygon(location.coordinates.x, location.coordinates.y, r.polygon),
+      );
+      if (insideRegion) {
+        regionLine = `Region: ${escapeText(insideRegion.name)}`;
+      }
+    }
+
     const travelLine = `Travel continuity: Characters are currently inside the ${escapeText(
       location.name,
     )}. A scene at another destination requires explicit travel or a justified transition.`;
@@ -155,15 +192,17 @@ export class AtlasSpatialContextService implements SpatialContextService {
     const finalReachable = [...activeReachable];
 
     while (finalReachable.length > 0) {
-      const prompt = assemblePrompt(
+      const prompt = assemblePrompt({
         heading,
         mapLine,
         locLine,
-        finalReachable,
+        reachable: finalReachable,
         travelLine,
         descLine,
         parentLine,
-      );
+        hierarchyLine,
+        regionLine,
+      });
       if (prompt.length <= limit) {
         return prompt;
       }
@@ -171,22 +210,34 @@ export class AtlasSpatialContextService implements SpatialContextService {
     }
 
     // Try showing bare layout first
-    let prompt = assemblePrompt(heading, mapLine, locLine, [], travelLine, descLine, parentLine);
+    let prompt = assemblePrompt({
+      heading,
+      mapLine,
+      locLine,
+      reachable: [],
+      travelLine,
+      descLine,
+      parentLine,
+      hierarchyLine,
+      regionLine,
+    });
     if (prompt.length <= limit) {
       return prompt;
     }
 
     // Prefer truncating description with a clear ellipsis first
     if (location.description && descLine) {
-      const overhead = assemblePrompt(
+      const overhead = assemblePrompt({
         heading,
         mapLine,
         locLine,
-        [],
+        reachable: [],
         travelLine,
-        'Location description: ',
+        descLine: 'Location description: ',
         parentLine,
-      ).length;
+        hierarchyLine,
+        regionLine,
+      }).length;
       const remaining = limit - overhead;
       if (remaining > 15) {
         const truncatedDesc =
@@ -194,15 +245,17 @@ export class AtlasSpatialContextService implements SpatialContextService {
             .slice(0, Math.max(0, remaining - 3))
             .join('') + '...';
         const truncatedDescLine = `Location description: ${escapeText(truncatedDesc)}`;
-        prompt = assemblePrompt(
+        prompt = assemblePrompt({
           heading,
           mapLine,
           locLine,
-          [],
+          reachable: [],
           travelLine,
-          truncatedDescLine,
+          descLine: truncatedDescLine,
           parentLine,
-        );
+          hierarchyLine,
+          regionLine,
+        });
         if (prompt.length <= limit) {
           return prompt;
         }
@@ -210,13 +263,42 @@ export class AtlasSpatialContextService implements SpatialContextService {
     }
 
     // Try without description
-    prompt = assemblePrompt(heading, mapLine, locLine, [], travelLine, undefined, parentLine);
+    prompt = assemblePrompt({
+      heading,
+      mapLine,
+      locLine,
+      reachable: [],
+      travelLine,
+      parentLine,
+      hierarchyLine,
+      regionLine,
+    });
     if (prompt.length <= limit) {
       return prompt;
     }
 
-    // Try without description and parent line
-    prompt = assemblePrompt(heading, mapLine, locLine, [], travelLine, undefined, undefined);
+    // Try without region line
+    prompt = assemblePrompt({
+      heading,
+      mapLine,
+      locLine,
+      reachable: [],
+      travelLine,
+      parentLine,
+      hierarchyLine,
+    });
+    if (prompt.length <= limit) {
+      return prompt;
+    }
+
+    // Try without parent line and hierarchy line
+    prompt = assemblePrompt({
+      heading,
+      mapLine,
+      locLine,
+      reachable: [],
+      travelLine,
+    });
     if (prompt.length <= limit) {
       return prompt;
     }
@@ -255,25 +337,57 @@ function escapeText(value: string): string {
 }
 
 /** Helper to join non-empty segments with double-newlines. */
-function assemblePrompt(
-  heading: string,
-  mapLine: string,
-  locLine: string,
-  reachable: readonly string[],
-  travelLine: string,
-  descLine?: string,
-  parentLine?: string,
-): string {
-  const segments: string[] = [heading, mapLine, locLine];
-  if (parentLine) {
-    segments.push(parentLine);
+function assemblePrompt(args: {
+  heading: string;
+  mapLine: string;
+  locLine: string;
+  reachable: readonly string[];
+  travelLine: string;
+  descLine?: string;
+  parentLine?: string;
+  hierarchyLine?: string;
+  regionLine?: string;
+}): string {
+  const segments: string[] = [args.heading, args.mapLine, args.locLine];
+  if (args.parentLine) {
+    segments.push(args.parentLine);
   }
-  if (descLine) {
-    segments.push(descLine);
+  if (args.hierarchyLine) {
+    segments.push(args.hierarchyLine);
   }
-  if (reachable.length > 0) {
-    segments.push(`Nearby known locations:\n${reachable.join('\n')}`);
+  if (args.regionLine) {
+    segments.push(args.regionLine);
   }
-  segments.push(travelLine);
+  if (args.descLine) {
+    segments.push(args.descLine);
+  }
+  if (args.reachable.length > 0) {
+    segments.push(`Nearby known locations:\n${args.reachable.join('\n')}`);
+  }
+  segments.push(args.travelLine);
   return segments.join('\n\n');
+}
+
+/**
+ * Pure helper for polygonal containment check: ray-casting algorithm.
+ * Normalized coordinates are compared.
+ */
+export function isPointInPolygon(
+  x: number,
+  y: number,
+  polygon: readonly (readonly [number, number])[],
+): boolean {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i][0];
+    const yi = polygon[i][1];
+    const xj = polygon[j][0];
+    const yj = polygon[j][1];
+
+    const intersect = yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
+    if (intersect) {
+      inside = !inside;
+    }
+  }
+  return inside;
 }

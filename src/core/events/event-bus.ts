@@ -37,6 +37,12 @@ export interface AtlasEventMap {
   MarkerSelected: { readonly locationId: string };
   /** Fired when a region is selected in the viewer. */
   RegionSelected: { readonly regionId: string };
+  /** Fired when a route is selected in the viewer. */
+  RouteSelected: { readonly routeId: string };
+  /** Fired when a child map is opened through nested-map navigation. */
+  ChildMapOpened: { readonly childMapId: string };
+  /** Fired when a parent map is opened through nested-map navigation. */
+  ParentMapOpened: { readonly parentMapId: string };
   /** Fired when AI-assisted map generation begins. */
   GenerationStarted: { readonly presetId: string };
   /** Fired when AI-assisted map generation completes. */

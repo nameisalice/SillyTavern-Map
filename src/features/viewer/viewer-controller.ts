@@ -17,9 +17,17 @@
 
 import type { AtlasLocation } from '@/domain/location';
 import type { AtlasMapDocument } from '@/domain/map';
+import type { AtlasRegion } from '@/domain/region';
+import type { AtlasRoute } from '@/domain/route';
 import { MapViewer, type MapViewer as MapViewerType } from './map-viewer';
 import { MarkerLayer, buildMarkerData, type MarkerLayer as MarkerLayerType } from './marker-layer';
-import { buildLocationDetailElement } from './tooltip-controller';
+import { RegionLayer } from './region-layer';
+import { RouteLayer } from './route-layer';
+import {
+  buildLocationDetailElement,
+  buildRegionDetailElement,
+  buildRouteDetailElement,
+} from './tooltip-controller';
 import { logError, logInfo } from '@/core/logger';
 import { type EventBus } from '@/core/events';
 import type { ViewerToolbar } from '@/services/viewer-service.types';
@@ -28,7 +36,10 @@ import type { ViewerToolbar } from '@/services/viewer-service.types';
 type ToolbarBinder = (commands: ViewerToolbar) => void;
 
 /** Shows a location detail element. Backed by the host Popup (service). */
-export type ShowLocationDetail = (element: HTMLElement, location: AtlasLocation) => Promise<void>;
+export type ShowLocationDetail = (
+  element: HTMLElement,
+  item: AtlasLocation | AtlasRegion | AtlasRoute,
+) => Promise<void>;
 
 /**
  * The viewer controller. Constructed per open panel; disposed when the
@@ -37,14 +48,20 @@ export type ShowLocationDetail = (element: HTMLElement, location: AtlasLocation)
 export class ViewerController {
   private viewer: MapViewerType | null = null;
   private markers: MarkerLayerType | null = null;
+  private regions: RegionLayer | null = null;
+  private routes: RouteLayer | null = null;
   private readonly container: HTMLElement;
   private readonly document: AtlasMapDocument;
   private readonly eventBus: EventBus;
   private readonly bindToolbar: ToolbarBinder;
   private readonly showDetail: ShowLocationDetail;
   private readonly requestTravel: (locationId: string) => void;
+  private readonly requestOpenChildMap: (childMapId: string) => void;
   private readonly imageUrlOverride?: string;
   private readonly discoveredLocationIds: ReadonlySet<string>;
+  private readonly discoveredRegionIds: ReadonlySet<string>;
+  private showRegions = true;
+  private showRoutes = true;
   private currentLocationId: string | null;
 
   constructor(args: {
@@ -54,7 +71,9 @@ export class ViewerController {
     bindToolbar: ToolbarBinder;
     showDetail: ShowLocationDetail;
     requestTravel: (locationId: string) => void;
+    requestOpenChildMap: (childMapId: string) => void;
     discoveredLocationIds: ReadonlySet<string>;
+    discoveredRegionIds: ReadonlySet<string>;
     /** Repository-resolved object URL for a persistent map's image. */
     imageUrlOverride?: string;
     currentLocationId?: string | null;
@@ -65,7 +84,9 @@ export class ViewerController {
     this.bindToolbar = args.bindToolbar;
     this.showDetail = args.showDetail;
     this.requestTravel = args.requestTravel;
+    this.requestOpenChildMap = args.requestOpenChildMap;
     this.discoveredLocationIds = args.discoveredLocationIds;
+    this.discoveredRegionIds = args.discoveredRegionIds;
     this.imageUrlOverride = args.imageUrlOverride;
     this.currentLocationId = args.currentLocationId ?? args.document.defaultLocationId ?? null;
   }
@@ -91,6 +112,12 @@ export class ViewerController {
       this.markers.render(
         buildMarkerData(this.document, this.currentLocationId, this.discoveredLocationIds),
       );
+
+      this.regions = new RegionLayer(map, dims, (regionId) => this.onRegionSelected(regionId));
+      this.regions.render(this.document.regions || [], this.discoveredRegionIds);
+
+      this.routes = new RouteLayer(map, dims, (routeId) => this.onRouteSelected(routeId));
+      this.routes.render(this.document.routes || [], this.document.locations);
     }
 
     this.bindToolbar({
@@ -98,6 +125,8 @@ export class ViewerController {
       onCenter: () => this.centerOnCurrent(),
       onZoomIn: () => this.viewer?.zoomIn(),
       onZoomOut: () => this.viewer?.zoomOut(),
+      onToggleRegions: () => this.toggleRegions(),
+      onToggleRoutes: () => this.toggleRoutes(),
     });
 
     // Size now that the container is visible.
@@ -135,11 +164,48 @@ export class ViewerController {
     if (location) {
       const isCurrent = locationId === this.currentLocationId;
       void this.showDetail(
-        buildLocationDetailElement(location, isCurrent, () => this.requestTravel(locationId)),
+        buildLocationDetailElement(
+          location,
+          isCurrent,
+          () => this.requestTravel(locationId),
+          location.childMapId ? () => this.requestOpenChildMap(location.childMapId!) : undefined,
+        ),
         location,
       );
     }
     this.eventBus.emit('MarkerSelected', { locationId });
+  }
+
+  /** Handles region selection: highlight + detail popup + event. */
+  private onRegionSelected(regionId: string): void {
+    this.regions?.select(regionId);
+    const region = this.document.regions.find((r) => r.id === regionId);
+    if (region) {
+      void this.showDetail(buildRegionDetailElement(region), region);
+    }
+    this.eventBus.emit('RegionSelected', { regionId });
+  }
+
+  /** Handles route selection: highlight + detail popup + event. */
+  private onRouteSelected(routeId: string): void {
+    this.routes?.select(routeId);
+    const route = this.document.routes.find((r) => r.id === routeId);
+    if (route) {
+      void this.showDetail(buildRouteDetailElement(route, this.document.locations), route);
+    }
+    this.eventBus.emit('RouteSelected', { routeId });
+  }
+
+  /** Toggles the region layer visibility. */
+  toggleRegions(): void {
+    this.showRegions = !this.showRegions;
+    this.regions?.setVisible(this.showRegions);
+  }
+
+  /** Toggles the route layer visibility. */
+  toggleRoutes(): void {
+    this.showRoutes = !this.showRoutes;
+    this.routes?.setVisible(this.showRoutes);
   }
 
   /** Closes the viewer without destroying it (panel hidden). */
@@ -152,6 +218,10 @@ export class ViewerController {
   dispose(): void {
     this.markers?.dispose();
     this.markers = null;
+    this.regions?.dispose();
+    this.regions = null;
+    this.routes?.dispose();
+    this.routes = null;
     this.viewer?.dispose();
     this.viewer = null;
     this.eventBus.emit('MapClosed', {});

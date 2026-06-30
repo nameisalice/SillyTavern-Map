@@ -1,46 +1,68 @@
 /**
- * Property panel: a safe-DOM form for editing a location's fields.
+ * Property panel: safe-DOM form for Locations, Regions, and Routes.
  *
- * All user-provided text is inserted with `textContent`, never
- * `innerHTML`, so a malicious map pack cannot inject markup. The panel
- * reads from / writes to a form container; it does not own the working
- * document — the editor session does.
+ * Implements forms for Marker, Region, and Route attributes using only
+ * safe DOM APIs (textContent) and event emitters, preventing HTML
+ * injection.
  */
 
 import type { AtlasLocation } from '@/domain/location';
+import type { AtlasRegion } from '@/domain/region';
+import type { AtlasRoute } from '@/domain/route';
 
-/** A collected field update from the form. */
+/** Values from the active edit form. */
 export interface PropertyPanelValues {
-  readonly name: string;
-  readonly description: string;
-  readonly category: string;
-  readonly icon: string;
-  readonly dangerLevel: AtlasLocation['dangerLevel'];
-  readonly aliases: readonly string[];
-  readonly worldInfoKeywords: readonly string[];
-  readonly hiddenUntilDiscovered: boolean;
-  readonly discoveredByDefault: boolean;
-  readonly isDefault: boolean;
+  readonly type: 'location' | 'region' | 'route';
+  readonly location?: {
+    readonly name: string;
+    readonly description: string;
+    readonly category: string;
+    readonly icon: string;
+    readonly dangerLevel: AtlasLocation['dangerLevel'];
+    readonly aliases: readonly string[];
+    readonly worldInfoKeywords: readonly string[];
+    readonly hiddenUntilDiscovered: boolean;
+    readonly discoveredByDefault: boolean;
+    readonly isDefault: boolean;
+    readonly childMapId: string;
+  };
+  readonly region?: {
+    readonly name: string;
+    readonly description: string;
+    readonly fillColor: string;
+    readonly borderColor: string;
+    readonly opacity: number;
+    readonly hiddenUntilDiscovered: boolean;
+  };
+  readonly route?: {
+    readonly name: string;
+    readonly bidirectional: boolean;
+    readonly distance?: number;
+    readonly distanceUnit: AtlasRoute['distanceUnit'];
+    readonly travelTime?: number;
+    readonly travelTimeUnit: AtlasRoute['travelTimeUnit'];
+    readonly dangerLevel: AtlasRoute['dangerLevel'];
+    readonly locked: boolean;
+    readonly requirements: readonly string[];
+  };
 }
 
-/** Builds a form inside `container` for the given location. */
 export class PropertyPanel {
   private readonly container: HTMLElement;
   private readonly onChange: (values: PropertyPanelValues) => void;
+  private activeItemType: 'location' | 'region' | 'route' | null = null;
 
   constructor(container: HTMLElement, onChange: (values: PropertyPanelValues) => void) {
     this.container = container;
     this.onChange = onChange;
   }
 
-  /** Renders the form fields for a location. Safe DOM construction. */
-  render(location: AtlasLocation | null, isDefault: boolean): void {
+  /** Renders a Location form. textContent safe. */
+  renderLocation(location: AtlasLocation | null, isDefault: boolean): void {
+    this.activeItemType = 'location';
     this.container.replaceChildren();
     if (!location) {
-      const empty = document.createElement('p');
-      empty.className = 'st-atlas__property-empty';
-      empty.textContent = 'Select a marker to edit its properties.';
-      this.container.append(empty);
+      this.renderEmpty('Select a marker to edit.');
       return;
     }
 
@@ -50,51 +72,157 @@ export class PropertyPanel {
       this.row('Category', this.textInput('category', location.category ?? '')),
       this.row('Icon identifier', this.textInput('icon', location.icon ?? '')),
       this.row('Danger level (0-5)', this.dangerSelect(location.dangerLevel ?? 0)),
-      this.row(
-        'Aliases (comma separated)',
-        this.textInput('aliases', (location.aliases ?? []).join(', ')),
-      ),
+      this.row('Aliases (comma separated)', this.textInput('aliases', (location.aliases ?? []).join(', '))),
       this.row(
         'World Info keywords (comma separated)',
         this.textInput('keywords', (location.worldInfoKeywords ?? []).join(', ')),
       ),
-      this.row(
-        '',
-        this.checkbox('hidden', 'Hidden until discovered', location.hiddenUntilDiscovered === true),
-      ),
-      this.row(
-        '',
-        this.checkbox('discovered', 'Discovered by default', location.discoveredByDefault === true),
-      ),
+      this.row('Child Map ID (optional)', this.textInput('childMapId', location.childMapId ?? '')),
+      this.row('', this.checkbox('hidden', 'Hidden until discovered', location.hiddenUntilDiscovered === true)),
+      this.row('', this.checkbox('discovered', 'Discovered by default', location.discoveredByDefault === true)),
       this.row('', this.checkbox('default', 'Set as default location', isDefault)),
     );
 
-    this.container.addEventListener('input', () => this.emit());
-    this.container.addEventListener('change', () => this.emit());
+    this.bindEvents();
   }
 
-  /** Collects current values from the form. */
-  collect(): PropertyPanelValues | null {
+  /** Renders a Region form. textContent safe. */
+  renderRegion(region: AtlasRegion | null): void {
+    this.activeItemType = 'region';
+    this.container.replaceChildren();
+    if (!region) {
+      this.renderEmpty('Select a region to edit.');
+      return;
+    }
+
+    this.container.append(
+      this.row('Region Name', this.textInput('name', region.name)),
+      this.row('Description', this.textArea('description', region.description ?? '')),
+      this.row('Fill Color', this.colorInput('fillColor', region.fillColor ?? '#3498db')),
+      this.row('Border Color', this.colorInput('borderColor', region.borderColor ?? '#2980b9')),
+      this.row('Opacity (0.1–1.0)', this.numberInput('opacity', region.opacity ?? 0.3, 0.1, 1.0, 0.1)),
+      this.row('', this.checkbox('hidden', 'Hidden until discovered', region.hiddenUntilDiscovered === true)),
+    );
+
+    this.bindEvents();
+  }
+
+  /** Renders a Route form. textContent safe. */
+  renderRoute(route: AtlasRoute | null): void {
+    this.activeItemType = 'route';
+    this.container.replaceChildren();
+    if (!route) {
+      this.renderEmpty('Select a route to edit.');
+      return;
+    }
+
+    this.container.append(
+      this.row('Route Name', this.textInput('name', route.name)),
+      this.row('Distance', this.numberInput('distance', route.distance ?? 0, 0, 99999, 1)),
+      this.row('Distance Unit', this.unitSelect('distanceUnit', route.distanceUnit ?? 'km', ['m', 'km', 'mi', 'day', 'hour'])),
+      this.row('Travel Time', this.numberInput('travelTime', route.travelTime ?? 0, 0, 99999, 1)),
+      this.row('Travel Time Unit', this.unitSelect('travelTimeUnit', route.travelTimeUnit ?? 'hour', ['minute', 'hour', 'day'])),
+      this.row('Danger level (0-5)', this.dangerSelect(route.dangerLevel ?? 0)),
+      this.row('Requirements (comma separated)', this.textInput('requirements', (route.requirements ?? []).join(', '))),
+      this.row('', this.checkbox('bidirectional', 'Bidirectional Route', route.bidirectional)),
+      this.row('', this.checkbox('locked', 'Locked Route', route.locked === true)),
+    );
+
+    this.bindEvents();
+  }
+
+  clear(): void {
+    this.activeItemType = null;
+    this.container.replaceChildren();
+    this.renderEmpty('Select an element to edit.');
+  }
+
+  private renderEmpty(message: string): void {
+    const empty = document.createElement('p');
+    empty.className = 'st-atlas__property-empty';
+    empty.textContent = message;
+    this.container.append(empty);
+  }
+
+  private bindEvents(): void {
+    // Clean listener and bind once
+    this.container.replaceWith(this.container.cloneNode(true));
+    const fresh = document.querySelector<HTMLElement>('.st-atlas__property-panel');
+    if (fresh) {
+      // Re-assign the container reference to keep elements wired
+      Object.assign(this, { container: fresh });
+      fresh.addEventListener('input', () => this.emit());
+      fresh.addEventListener('change', () => this.emit());
+    }
+  }
+
+  private collectValues(): PropertyPanelValues | null {
+    if (!this.activeItemType) {
+      return null;
+    }
     const name = this.value('name');
     if (name === null) {
       return null;
     }
-    return {
-      name,
-      description: this.value('description') ?? '',
-      category: this.value('category') ?? '',
-      icon: this.value('icon') ?? '',
-      dangerLevel: this.dangerValue(),
-      aliases: this.splitList(this.value('aliases')),
-      worldInfoKeywords: this.splitList(this.value('keywords')),
-      hiddenUntilDiscovered: this.checked('hidden'),
-      discoveredByDefault: this.checked('discovered'),
-      isDefault: this.checked('default'),
-    };
+
+    if (this.activeItemType === 'location') {
+      return {
+        type: 'location',
+        location: {
+          name,
+          description: this.value('description') ?? '',
+          category: this.value('category') ?? '',
+          icon: this.value('icon') ?? '',
+          dangerLevel: this.dangerValue(),
+          aliases: this.splitList(this.value('aliases')),
+          worldInfoKeywords: this.splitList(this.value('keywords')),
+          hiddenUntilDiscovered: this.checked('hidden'),
+          discoveredByDefault: this.checked('discovered'),
+          isDefault: this.checked('default'),
+          childMapId: this.value('childMapId') ?? '',
+        },
+      };
+    }
+
+    if (this.activeItemType === 'region') {
+      const opacityVal = Number.parseFloat(this.value('opacity') ?? '0.3');
+      return {
+        type: 'region',
+        region: {
+          name,
+          description: this.value('description') ?? '',
+          fillColor: this.value('fillColor') ?? '#3498db',
+          borderColor: this.value('borderColor') ?? '#2980b9',
+          opacity: Number.isFinite(opacityVal) ? opacityVal : 0.3,
+          hiddenUntilDiscovered: this.checked('hidden'),
+        },
+      };
+    }
+
+    if (this.activeItemType === 'route') {
+      const distVal = this.value('distance');
+      const timeVal = this.value('travelTime');
+      return {
+        type: 'route',
+        route: {
+          name,
+          bidirectional: this.checked('bidirectional'),
+          distance: distVal ? Number.parseFloat(distVal) : undefined,
+          distanceUnit: (this.value('distanceUnit') ?? 'km') as AtlasRoute['distanceUnit'],
+          travelTime: timeVal ? Number.parseFloat(timeVal) : undefined,
+          travelTimeUnit: (this.value('travelTimeUnit') ?? 'hour') as AtlasRoute['travelTimeUnit'],
+          dangerLevel: this.dangerValue(),
+          locked: this.checked('locked'),
+          requirements: this.splitList(this.value('requirements')),
+        },
+      };
+    }
+
+    return null;
   }
 
   private emit(): void {
-    const values = this.collect();
+    const values = this.collectValues();
     if (values) {
       this.onChange(values);
     }
@@ -133,6 +261,29 @@ export class PropertyPanel {
     return area;
   }
 
+  private colorInput(id: string, value: string): HTMLElement {
+    const input = document.createElement('input');
+    input.type = 'color';
+    input.id = `st-atlas-prop-${id}`;
+    input.name = id;
+    input.className = 'st-atlas__property-input';
+    input.value = value;
+    return input;
+  }
+
+  private numberInput(id: string, value: number, min: number, max: number, step: number): HTMLElement {
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.id = `st-atlas-prop-${id}`;
+    input.name = id;
+    input.value = String(value);
+    input.min = String(min);
+    input.max = String(max);
+    input.step = String(step);
+    input.className = 'st-atlas__property-input text_pole';
+    return input;
+  }
+
   private dangerSelect(value: number): HTMLElement {
     const select = document.createElement('select');
     select.id = 'st-atlas-prop-danger';
@@ -143,6 +294,23 @@ export class PropertyPanel {
       option.value = String(level);
       option.textContent = String(level);
       if (level === value) {
+        option.selected = true;
+      }
+      select.append(option);
+    }
+    return select;
+  }
+
+  private unitSelect(id: string, value: string, allowed: readonly string[]): HTMLElement {
+    const select = document.createElement('select');
+    select.id = `st-atlas-prop-${id}`;
+    select.name = id;
+    select.className = 'st-atlas__property-input text_pole';
+    for (const unit of allowed) {
+      const option = document.createElement('option');
+      option.value = unit;
+      option.textContent = unit;
+      if (unit === value) {
         option.selected = true;
       }
       select.append(option);

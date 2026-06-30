@@ -10,7 +10,7 @@ import { EXTENSION_NAME } from '@/constants';
 import { getContext } from '@/st/context';
 import { logError } from '@/core/logger';
 import type { AtlasMapDocument } from '@/domain/map';
-import { EditorController, type EditorPopup } from '@/features/editor';
+import { EditorController, type EditorPopup, type EditorSubMode } from '@/features/editor';
 import type { MapDraftService } from '@/services/map-draft-service';
 import type { ViewerService } from '@/services/viewer-service.types';
 import type { EventBus } from '@/core/events';
@@ -119,12 +119,13 @@ function wireToolbar(
     onSave: () => void;
     onTogglePreview: () => void;
     onExit: () => void;
+    onChangeSubMode: (subMode: EditorSubMode) => void;
   },
 ): void {
   const buttons = root.querySelectorAll<HTMLElement>('[data-st-atlas-editor-action]');
   for (const btn of buttons) {
     const action = btn.getAttribute('data-st-atlas-editor-action');
-    const handler = toolbarHandler(action, commands);
+    const handler = toolbarHandler(action, commands, buttons, root);
     if (handler) {
       btn.addEventListener('click', handler);
     }
@@ -140,8 +141,34 @@ function toolbarHandler(
     onSave: () => void;
     onTogglePreview: () => void;
     onExit: () => void;
+    onChangeSubMode: (subMode: EditorSubMode) => void;
   },
+  buttons: NodeListOf<HTMLElement>,
+  root: HTMLElement,
 ): (() => void) | null {
+  if (action && action.startsWith('mode-')) {
+    const subMode = action.replace('mode-', '');
+    if (!isEditorSubMode(subMode)) {
+      return null;
+    }
+    return () => {
+      // Toggle active visual class on mode group buttons
+      for (const btn of buttons) {
+        const btnAction = btn.getAttribute('data-st-atlas-editor-action');
+        if (btnAction && btnAction.startsWith('mode-')) {
+          btn.classList.toggle('st-atlas__editor-btn--active-mode', btnAction === action);
+        }
+      }
+      // Re-label mode display text
+      const modeText = root.querySelector<HTMLElement>('[data-st-atlas="editor-mode"]');
+      if (modeText) {
+        const capitalSub = subMode.charAt(0).toUpperCase() + subMode.slice(1);
+        modeText.textContent = `Edit (${capitalSub}s)`;
+      }
+      commands.onChangeSubMode(subMode);
+    };
+  }
+
   switch (action) {
     case 'add':
       return () => commands.onAddLocation();
@@ -152,12 +179,25 @@ function toolbarHandler(
     case 'save':
       return () => commands.onSave();
     case 'preview':
-      return () => commands.onTogglePreview();
+      return () => {
+        // Toggle preview labels
+        const modeText = root.querySelector<HTMLElement>('[data-st-atlas="editor-mode"]');
+        if (modeText) {
+          const isPreview = modeText.getAttribute('data-mode') === 'preview';
+          modeText.setAttribute('data-mode', isPreview ? 'edit' : 'preview');
+          modeText.textContent = isPreview ? 'Edit (Markers)' : 'Preview Mode';
+        }
+        commands.onTogglePreview();
+      };
     case 'exit':
       return () => commands.onExit();
     default:
       return null;
   }
+}
+
+function isEditorSubMode(value: string): value is EditorSubMode {
+  return value === 'marker' || value === 'region' || value === 'route';
 }
 
 /** Fallback editor markup when the template cannot be rendered. */

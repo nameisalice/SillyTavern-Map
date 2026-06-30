@@ -36,7 +36,36 @@
     >
       <i class="fa-solid fa-eye"></i><span>Preview</span>
     </button>
-    <span class="st-atlas__editor-mode" data-st-atlas="editor-mode">Edit</span>
+    <div class="st-atlas__editor-modes-group">
+      <button
+        type="button"
+        class="st-atlas__editor-btn menu_button menu_button_icon st-atlas__editor-btn--active-mode"
+        data-st-atlas-editor-action="mode-marker"
+        title="Marker Edit Mode"
+        aria-label="Marker Mode"
+      >
+        <i class="fa-solid fa-location-dot"></i><span>Markers</span>
+      </button>
+      <button
+        type="button"
+        class="st-atlas__editor-btn menu_button menu_button_icon"
+        data-st-atlas-editor-action="mode-region"
+        title="Region Edit Mode"
+        aria-label="Region Mode"
+      >
+        <i class="fa-solid fa-draw-polygon"></i><span>Regions</span>
+      </button>
+      <button
+        type="button"
+        class="st-atlas__editor-btn menu_button menu_button_icon"
+        data-st-atlas-editor-action="mode-route"
+        title="Route Edit Mode"
+        aria-label="Route Mode"
+      >
+        <i class="fa-solid fa-route"></i><span>Routes</span>
+      </button>
+    </div>
+    <span class="st-atlas__editor-mode" data-st-atlas="editor-mode">Edit (Markers)</span>
     <span class="st-atlas__editor-spacer"></span>
     <button
       type="button"

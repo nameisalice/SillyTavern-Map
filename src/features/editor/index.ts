@@ -15,16 +15,37 @@ export {
   uniqueLocationId,
   uniqueMapId,
 } from './coordinate-utils';
-export { type AtlasEditorState, type EditorMode, createEditorState } from './editor-state';
+export {
+  type AtlasEditorState,
+  type EditorMode,
+  type EditorSubMode,
+  createEditorState,
+} from './editor-state';
 export { type EditorSnapshot, EditorHistory, MAX_HISTORY } from './editor-history';
 export {
+  type AddRegionInput,
+  type AddRouteInput,
   type AddMarkerInput,
   type DeleteMarkerResult,
   type MarkerFieldUpdate,
+  type RegionFieldUpdate,
+  type RouteFieldUpdate,
   addMarker,
+  addRegion,
+  addRegionPoint,
+  addRoute,
+  addRoutePoint,
   deleteMarker,
+  deleteRegion,
+  deleteRoute,
   editMarker,
+  editRegion,
+  editRoute,
   moveMarker,
+  moveRegionPoint,
+  moveRoutePoint,
+  removeRegionPoint,
+  removeRoutePoint,
   setDefaultLocation,
 } from './marker-editor';
 export {

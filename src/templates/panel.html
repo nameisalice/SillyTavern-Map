@@ -37,6 +37,24 @@
     >
       <i class="fa-solid fa-magnifying-glass-minus"></i>
     </button>
+    <button
+      type="button"
+      class="st-atlas__toolbar-btn menu_button menu_button_icon st-atlas__toolbar-btn--toggle"
+      data-st-atlas-action="toggle-regions"
+      title="Toggle regions layer"
+      aria-label="Toggle regions"
+    >
+      <i class="fa-solid fa-draw-polygon"></i>
+    </button>
+    <button
+      type="button"
+      class="st-atlas__toolbar-btn menu_button menu_button_icon st-atlas__toolbar-btn--toggle"
+      data-st-atlas-action="toggle-routes"
+      title="Toggle routes layer"
+      aria-label="Toggle routes"
+    >
+      <i class="fa-solid fa-route"></i>
+    </button>
   </div>
   <button
     type="button"
@@ -45,6 +63,9 @@
   >
     <i class="fa-solid fa-xmark"></i>
   </button>
+</div>
+<div class="st-atlas__breadcrumbs-container">
+  <div class="st-atlas__breadcrumbs" data-st-atlas="breadcrumbs"></div>
 </div>
 <div class="st-atlas__panel-body">
   <div class="st-atlas__canvas" data-st-atlas="canvas"></div>

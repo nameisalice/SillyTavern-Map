@@ -12,11 +12,16 @@ import {
   EditorHistory,
   type EditorSnapshot,
   addMarker,
+  addRegion,
+  addRegionPoint,
+  addRoute,
   deleteMarker,
   editMarker,
+  moveRegionPoint,
   latLngToNormalized,
   moveMarker,
   nameToSlug,
+  removeRegionPoint,
   setDefaultLocation,
   uniqueLocationId,
   uniqueMapId,
@@ -127,10 +132,70 @@ describe('marker operations', () => {
   });
 });
 
+describe('region and route operations', () => {
+  it('adds and edits region vertices with clamped coordinates', () => {
+    const doc = emptyDraft();
+    const { document, regionId } = addRegion(doc, {
+      name: 'Old Woods',
+      polygon: [
+        [-10, 10],
+        [40, 20],
+        [20, 140],
+      ],
+    });
+
+    expect(regionId).toBe('old-woods');
+    expect(document.regions[0].polygon).toEqual([
+      [0, 10],
+      [40, 20],
+      [20, 100],
+    ]);
+
+    const moved = moveRegionPoint(document, regionId, 1, 120, -5);
+    expect(moved.regions[0].polygon[1]).toEqual([100, 0]);
+
+    const added = addRegionPoint(moved, regionId, 30, 30);
+    expect(added.regions[0].polygon).toHaveLength(4);
+
+    const removed = removeRegionPoint(added, regionId, 0);
+    expect(removed.regions[0].polygon).toHaveLength(3);
+
+    const minimum = removeRegionPoint(removed, regionId, 0);
+    expect(minimum.regions[0].polygon).toHaveLength(3);
+  });
+
+  it('adds routes with stable unique ids and keeps endpoints explicit', () => {
+    const doc = emptyDraft();
+    const first = addMarker(doc, { name: 'Gate', x: 20, y: 30 });
+    const second = addMarker(first.document, { name: 'Keep', x: 80, y: 60 });
+
+    const route = addRoute(second.document, {
+      fromLocationId: first.locationId,
+      toLocationId: second.locationId,
+      bidirectional: true,
+      distance: 4,
+      distanceUnit: 'km',
+    });
+    const duplicate = addRoute(route.document, {
+      fromLocationId: first.locationId,
+      toLocationId: second.locationId,
+      bidirectional: false,
+    });
+
+    expect(route.routeId).toBe('route-gate_keep');
+    expect(duplicate.routeId).toBe('route-gate_keep-2');
+    expect(duplicate.document.routes[0]).toMatchObject({
+      fromLocationId: 'gate',
+      toLocationId: 'keep',
+      bidirectional: true,
+    });
+  });
+});
+
 describe('editor history', () => {
   function snap(name: string, sel?: string): EditorSnapshot {
     const document = { ...clone(), name } as AtlasMapDocument;
-    return { document, selectedLocationId: sel };
+    return { document, selectedItemId: sel, selectedType: sel ? 'location' : undefined };
   }
 
   it('undo and redo restore prior states', () => {
@@ -141,7 +206,7 @@ describe('editor history', () => {
     expect(history.canUndo()).toBe(true);
     const undone = history.undo()!;
     expect(undone.document.name).toBe('a');
-    expect(undone.selectedLocationId).toBe('a');
+    expect(undone.selectedItemId).toBe('a');
     expect(history.canRedo()).toBe(true);
     const redone = history.redo()!;
     expect(redone.document.name).toBe('b');

@@ -1,12 +1,14 @@
 /**
  * Viewer feature module.
  *
- * The self-contained home for the map viewer UI: the panel canvas,
- * toolbar, marker interactions, and viewer-specific controllers. It
- * depends on services (ViewerService, MapService) and never on
- * providers or storage directly.
- *
- * Placeholder for a later milestone. No implementation here.
+ * Visual map elements: Leaflet map adapters, markers, polylines,
+ * polygons, tooltips, and controllers. Depend only on domain and
+ * services, never on providers or storage.
  */
 
-export {};
+export { MapViewer, normalizedToLatLng } from './map-viewer';
+export { MarkerLayer, buildMarkerData } from './marker-layer';
+export { RegionLayer } from './region-layer';
+export { RouteLayer } from './route-layer';
+export { buildLocationDetail, buildLocationDetailElement } from './tooltip-controller';
+export { ViewerController } from './viewer-controller';

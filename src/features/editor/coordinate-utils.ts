@@ -31,6 +31,19 @@ export function latLngToNormalized(
   return { x, y };
 }
 
+/** Converts normalized [0, 100] document coordinates into Leaflet CRS.Simple coordinates. */
+export function normalizedToLatLng(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+): { lat: number; lng: number } {
+  return {
+    lat: height - (clamp(y, NORMALIZED_MIN, NORMALIZED_MAX) / NORMALIZED_MAX) * height,
+    lng: (clamp(x, NORMALIZED_MIN, NORMALIZED_MAX) / NORMALIZED_MAX) * width,
+  };
+}
+
 /** Clamps a value to an inclusive range. */
 export function clamp(value: number, min: number, max: number): number {
   if (Number.isNaN(value)) {

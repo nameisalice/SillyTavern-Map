@@ -14,7 +14,7 @@ import {
   registerSlashCommands,
   resolveLocation,
   resolveMap,
-  resetCommandsRegistered,
+  testOnlyResetCommandsRegistered,
 } from '@/st/slash-command-bridge';
 import { MapRepository } from '@/repositories/map-repository';
 import { AssetRepository } from '@/repositories/asset-repository';
@@ -56,6 +56,7 @@ interface MockContext {
   };
   POPUP_TYPE: { TEXT: number; CONFIRM: number };
   callGenericPopup: ReturnType<typeof vi.fn>;
+  renderExtensionTemplateAsync: ReturnType<typeof vi.fn>;
 }
 
 describe('M6 Slash Commands', () => {
@@ -118,6 +119,7 @@ describe('M6 Slash Commands', () => {
       },
       POPUP_TYPE: { TEXT: 1, CONFIRM: 2 },
       callGenericPopup: vi.fn().mockResolvedValue(1), // affirmative
+      renderExtensionTemplateAsync: vi.fn().mockResolvedValue('<div data-st-atlas="canvas"></div>'),
     };
 
     vi.spyOn(contextBridge, 'getContext').mockReturnValue(mockContext as unknown as SillyTavernContext);
@@ -133,7 +135,7 @@ describe('M6 Slash Commands', () => {
     importer = new ImportService(maps, assets);
     exporter = new ExportService(maps, assets);
 
-    resetCommandsRegistered();
+    testOnlyResetCommandsRegistered();
 
     await maps.save(SOUTHERN_MARCHES);
   });
@@ -212,7 +214,7 @@ describe('M6 Slash Commands', () => {
     expect(() => resolveLocation('guard-tower', ambiguousMap, [])).toThrow(/Ambiguous alias/);
   });
 
-  it('registers all 10 commands on SlashCommandParser', () => {
+  it('registers all 12 commands on SlashCommandParser', () => {
     registerSlashCommands({
       maps,
       travel,
@@ -224,7 +226,7 @@ describe('M6 Slash Commands', () => {
       draftService: null as unknown as MapDraftService,
     });
 
-    expect(registeredCommands.size).toBe(10);
+    expect(registeredCommands.size).toBe(12);
     expect(registeredCommands.has('atlas')).toBe(true);
     expect(registeredCommands.has('atlas-map')).toBe(true);
     expect(registeredCommands.has('atlas-go')).toBe(true);
@@ -235,6 +237,8 @@ describe('M6 Slash Commands', () => {
     expect(registeredCommands.has('atlas-library')).toBe(true);
     expect(registeredCommands.has('atlas-import')).toBe(true);
     expect(registeredCommands.has('atlas-export')).toBe(true);
+    expect(registeredCommands.has('atlas-open')).toBe(true);
+    expect(registeredCommands.has('atlas-back')).toBe(true);
   });
 
   it('/atlas-map command updates active map for current chat state', async () => {
@@ -255,6 +259,60 @@ describe('M6 Slash Commands', () => {
     const output = await atlasMapCmd.callback({}, 'Southern Marches');
     expect(output).toContain('Map set: Southern Marches');
     expect(travel.getActiveMapId()).toBe(SOUTHERN_MARCHES.id);
+  });
+
+  it('/atlas-open and /atlas-back navigate child and parent maps', async () => {
+    const childMap = {
+      ...SOUTHERN_MARCHES,
+      id: 'north-tower-interior',
+      name: 'North Tower Interior',
+      parentMapId: SOUTHERN_MARCHES.id,
+      defaultLocationId: 'north-tower',
+    };
+    const parentMap = {
+      ...SOUTHERN_MARCHES,
+      locations: SOUTHERN_MARCHES.locations.map((location) =>
+        location.id === 'north-tower'
+          ? { ...location, childMapId: childMap.id }
+          : location,
+      ),
+    };
+    await maps.save(parentMap);
+    await maps.save(childMap);
+
+    registerSlashCommands({
+      maps,
+      travel,
+      viewer,
+      library,
+      importer,
+      exporter,
+      eventBus,
+      draftService: null as unknown as MapDraftService,
+    });
+
+    mockContext.chatMetadata[CHAT_STATE_KEY] = {
+      version: 1,
+      activeMapId: SOUTHERN_MARCHES.id,
+      activeLocationId: 'north-tower',
+      discoveredLocationIds: ['north-tower'],
+      discoveredRegionIds: [],
+      bookmarks: [],
+      customMarkers: [],
+      travelHistory: [],
+    };
+
+    const openCmd = registeredCommands.get('atlas-open')!;
+    const backCmd = registeredCommands.get('atlas-back')!;
+
+    const openOutput = await openCmd.callback({ location: 'North Tower' }, '');
+    expect(openOutput).toContain('Opened child map');
+    expect(travel.getActiveMapId()).toBe(childMap.id);
+
+    const backOutput = await backCmd.callback({}, '');
+    expect(backOutput).toBe('Returned to parent map');
+    expect(travel.getActiveMapId()).toBe(SOUTHERN_MARCHES.id);
+    expect(travel.getCurrentLocationId()).toBe('north-tower');
   });
 
   it('/atlas-go coordinates route validation and force travel override', async () => {

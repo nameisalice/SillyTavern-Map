@@ -36,6 +36,41 @@ describe('map validation', () => {
     expect(result.errors.some((e) => e.path.includes('toLocationId'))).toBe(true);
   });
 
+  it('rejects malformed regions and route geometry', () => {
+    const base = clone();
+    const doc = {
+      ...base,
+      regions: [
+        {
+          id: 'bad-region',
+          name: 'Bad Region',
+          polygon: [
+            [0, 0],
+            [50, 50],
+          ],
+        },
+      ],
+      routes: [{ ...base.routes[0], points: [[20, 20], [120, 40]] }],
+    };
+    const result = validateMapDocument(doc);
+    expect(result.ok).toBe(false);
+    expect(result.errors.some((e) => e.path === 'regions[0].polygon')).toBe(true);
+    expect(result.errors.some((e) => e.path === 'routes[0].points[1][0]')).toBe(true);
+  });
+
+  it('rejects direct parent and child circular map references', () => {
+    const base = clone();
+    const doc = {
+      ...base,
+      parentMapId: base.id,
+      locations: [{ ...base.locations[0], childMapId: base.id }],
+    };
+    const result = validateMapDocument(doc);
+    expect(result.ok).toBe(false);
+    expect(result.errors.some((e) => e.path === 'parentMapId')).toBe(true);
+    expect(result.errors.some((e) => e.path === 'locations[0].childMapId')).toBe(true);
+  });
+
   it('rejects missing asset references', () => {
     const base = clone();
     const doc = { ...base, image: { ...base.image, assetId: '' } };

@@ -6,6 +6,7 @@
  */
 
 import type { TravelSource, AtlasChatState } from '@/domain/travel/chat-state';
+import type { AtlasMapDocument } from '@/domain/map';
 
 /** Result of a travel attempt. */
 export interface TravelResult {
@@ -44,4 +45,7 @@ export interface TravelService {
 
   /** Returns the full parsed chat state (for the UI / viewer). */
   loadChatState(): Promise<AtlasChatState>;
+
+  /** Loads a map document by id from storage, returning null if absent. */
+  loadMapDocument(mapId: string): Promise<AtlasMapDocument | null>;
 }

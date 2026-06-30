@@ -11,6 +11,7 @@
  */
 
 import type { TravelService, TravelResult } from './travel-service.types';
+import type { AtlasMapDocument } from '@/domain/map';
 import type { TravelSource, AtlasChatState } from '@/domain/travel/chat-state';
 import { loadChatMetadataState, saveChatMetadataState } from '@/st/chat-state-bridge';
 import type { MapRepository } from '@/repositories';
@@ -113,7 +114,16 @@ export class AtlasTravelService implements TravelService {
     if (mapId) {
       const map = await this.maps.load(mapId);
       if (map) {
-        defaultLocationId = map.defaultLocationId ?? undefined;
+        // If navigating backwards: check if oldMapId is the child of any location in mapId
+        if (oldMapId) {
+          const anchor = map.locations.find((l) => l.childMapId === oldMapId);
+          if (anchor) {
+            defaultLocationId = anchor.id;
+          }
+        }
+        if (!defaultLocationId) {
+          defaultLocationId = map.defaultLocationId ?? undefined;
+        }
       }
     }
 
@@ -164,6 +174,10 @@ export class AtlasTravelService implements TravelService {
 
   async loadChatState(): Promise<AtlasChatState> {
     return loadChatMetadataState();
+  }
+
+  async loadMapDocument(mapId: string): Promise<AtlasMapDocument | null> {
+    return this.maps.load(mapId);
   }
 
   /**
