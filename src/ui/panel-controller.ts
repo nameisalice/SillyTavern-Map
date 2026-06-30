@@ -31,6 +31,13 @@ let viewerService: ViewerService | null = null;
 let travelService: TravelService | null = null;
 /** Injected by the composition root. */
 let actionService: ActionService | null = null;
+/** Injected by the composition root for panel-level library actions. */
+let libraryActions: PanelLibraryActions | null = null;
+
+interface PanelLibraryActions {
+  readonly openLibrary: () => void;
+  readonly createMap: () => void;
+}
 
 /**
  * Injects the travel service. Called once by bootstrap before the panel
@@ -43,6 +50,11 @@ export function setTravelService(service: TravelService): void {
 /** Injects the safe action service. Called once by bootstrap. */
 export function setActionService(service: ActionService): void {
   actionService = service;
+}
+
+/** Injects map library entrypoints for toolbar buttons. */
+export function setPanelLibraryActions(actions: PanelLibraryActions): void {
+  libraryActions = actions;
 }
 
 /**
@@ -213,7 +225,25 @@ function buildFallbackPanel(root: HTMLElement): void {
   close.setAttribute('aria-label', 'Close Atlas panel');
   close.innerHTML = '<i class="fa-solid fa-xmark"></i>';
 
-  header.append(title, close);
+  const toolbar = document.createElement('div');
+  toolbar.className = 'st-atlas__panel-toolbar';
+  const library = document.createElement('button');
+  library.type = 'button';
+  library.className = 'st-atlas__toolbar-btn menu_button menu_button_icon';
+  library.setAttribute('data-st-atlas-panel-action', 'library');
+  library.setAttribute('aria-label', 'Open map library');
+  library.title = 'Open map library';
+  library.innerHTML = '<i class="fa-solid fa-folder-open"></i>';
+  const create = document.createElement('button');
+  create.type = 'button';
+  create.className = 'st-atlas__toolbar-btn menu_button menu_button_icon';
+  create.setAttribute('data-st-atlas-panel-action', 'create');
+  create.setAttribute('aria-label', 'Create map');
+  create.title = 'Create map';
+  create.innerHTML = '<i class="fa-solid fa-plus"></i>';
+  toolbar.append(library, create);
+
+  header.append(title, toolbar, close);
 
   const body = document.createElement('div');
   body.className = 'st-atlas__panel-body';
@@ -234,6 +264,13 @@ function wirePanelControls(root: HTMLElement): void {
     const fresh = root.querySelector<HTMLElement>('.st-atlas__panel-close');
     fresh?.addEventListener('click', () => closeAtlasPanel());
   }
+
+  root
+    .querySelector<HTMLElement>('[data-st-atlas-panel-action="library"]')
+    ?.addEventListener('click', () => libraryActions?.openLibrary());
+  root
+    .querySelector<HTMLElement>('[data-st-atlas-panel-action="create"]')
+    ?.addEventListener('click', () => libraryActions?.createMap());
 }
 
 /**

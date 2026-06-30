@@ -25,6 +25,8 @@ describe('panel controller', () => {
     expect(panel).not.toBeNull();
     expect(panel?.classList.contains('st-atlas__panel--open')).toBe(true);
     expect(panel?.querySelector('[data-st-atlas="canvas"]')).not.toBeNull();
+    expect(panel?.querySelector('[data-st-atlas-panel-action="library"]')).not.toBeNull();
+    expect(panel?.querySelector('[data-st-atlas-panel-action="create"]')).not.toBeNull();
     expect(renderExtensionTemplateAsync).not.toHaveBeenCalled();
   });
 });

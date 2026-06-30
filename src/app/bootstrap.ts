@@ -25,6 +25,7 @@ import { mountSettingsDrawer } from '@/ui/settings-controller';
 import {
   openAtlasPanel,
   setActionService,
+  setPanelLibraryActions,
   setViewerService,
   setTravelService,
 } from '@/ui/panel-controller';
@@ -233,6 +234,15 @@ export async function bootstrap(): Promise<boolean> {
   setCreateMapUploadService(getContainer().resolve(ImageUploadServiceToken));
   setTravelService(getContainer().resolve(TravelServiceToken));
   setActionService(getContainer().resolve(ActionServiceToken));
+  setPanelLibraryActions({
+    openLibrary: () => void openLibraryFlow(),
+    createMap: () =>
+      void openCreateMapFlow(
+        getContainer().resolve(MapDraftServiceToken),
+        getContainer().resolve(ViewerServiceToken),
+        getContainer().resolve(EventBusToken),
+      ),
+  });
 
   // Seed the bundled map into the repository on first run if missing
   const seeder = getContainer().resolve(MapSeedingServiceToken);
